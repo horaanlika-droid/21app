@@ -12,23 +12,24 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
-  --paper:#cec4ab;      /* тёплая e-ink бумага */
-  --card:#dcd5c1;       /* светло-серые панели/кнопки */
-  --card-2:#cfc7b0;     /* вторичная подложка */
-  --ink:#47433d;        /* тёмно-серые чернила (не чёрный) */
-  --ink-2:#5b564d;      /* тёмно-серый текст */
-  --ink-3:#8c8574;      /* приглушённый */
-  --line:#a49a86;       /* средне-серая линия (точечные рамки) */
-  --line-dk:#837a68;    /* тёмнее — для активных/фаски */
-  --acc:#bdb49c;        /* e-ink серый вместо бежевого */
-  --acc-d:#9c947f;
-  --bw:3px;             /* толщина рамок */
-  --bdot:3px dotted var(--line);
-  --bdot-dk:3px dotted var(--line-dk);
-  --sh:4px 4px 0 var(--line);   /* серая жёсткая тень */
-  --sh-sm:3px 3px 0 var(--line);
-  --bev:0 5px 0 var(--line-dk); /* фаска кнопки снизу */
-  --r:4px;
+  --paper:#070d07;      /* почти чёрный фон терминала */
+  --card:#0e1a0f;        /* тёмно-зелёные панели/кнопки */
+  --card-2:#122415;      /* вторичная подложка/выбор */
+  --ink:#74f79a;         /* яркий фосфорный зелёный (текст) */
+  --ink-2:#45d468;       /* средне-зелёный текст */
+  --ink-3:#2c8a48;       /* приглушённый зелёный */
+  --line:#26733a;        /* тусклая зелёная линия (пунктир) */
+  --line-dk:#43e06b;     /* яркая рамка/фаска/свечение */
+  --acc:#5df07c;         /* яркая заливка-акцент (кнопки) */
+  --acc-d:#2fbf57;
+  --bw:2px;
+  --bdot:2px dashed var(--line);
+  --bdot-dk:2px dashed var(--line-dk);
+  --glow:0 0 8px rgba(90,240,130,.35);
+  --sh:4px 4px 0 rgba(20,120,50,.25);
+  --sh-sm:0 0 10px rgba(40,200,90,.14);
+  --bev:0 4px 0 #1d5e31;
+  --r:3px;
   --pix:'Press Start 2P', ui-monospace, monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -37,10 +38,15 @@ body{
   font-family:var(--pix); background:var(--paper); color:var(--ink);
   font-size:9px; line-height:1.9; overflow:hidden;
   -webkit-font-smoothing:none; font-smooth:never;
+  text-shadow:var(--glow);
 }
+/* сканлайны ЭЛТ поверх всего */
+body::after{content:'';position:fixed;inset:0;z-index:9000;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0px,rgba(0,0,0,.16) 1px,transparent 1px,transparent 3px);
+  mix-blend-mode:multiply}
 img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 button{font-family:inherit}
-::selection{background:var(--ink);color:var(--paper)}
+::selection{background:var(--ink);color:#04120a}
 
 /* зерно бумаги */
 #grain{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.10;
@@ -65,25 +71,25 @@ button{font-family:inherit}
 .sb-batt i{display:block;height:100%;width:72%;background:var(--ink)}
 
 /* ── ЛЕНДИНГ ── */
-#landing{position:absolute;inset:0;z-index:500;background:var(--ink);color:var(--paper);
+#landing{position:absolute;inset:0;z-index:500;background:var(--paper);color:var(--ink);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:calc(env(safe-area-inset-top) + 30px) 26px calc(env(safe-area-inset-bottom) + 26px);
   overflow:hidden;transition:opacity .5s steps(6),transform .5s;gap:26px}
 #landing.hide{opacity:0;transform:scale(1.05);pointer-events:none}
 #landing::before{content:'';position:absolute;left:0;right:0;bottom:0;height:44%;
-  background:url('assets/mountains.png') bottom/cover no-repeat;opacity:.92;filter:grayscale(1) contrast(1.1)}
+  background:url('assets/mountains.png') bottom/cover no-repeat;opacity:.55}
 .land-logo{width:70%;max-width:280px;position:relative;z-index:2;
-  filter:invert(1) brightness(1.7) drop-shadow(5px 6px 0 rgba(0,0,0,.55));animation:floaty 3.5s steps(20) infinite}
+  filter:drop-shadow(0 0 12px rgba(90,240,130,.55));animation:floaty 3.5s steps(20) infinite}
 .land-tag{position:relative;z-index:2;text-align:center;font-size:9px;line-height:2.2;
-  background:var(--ink);border:var(--bw) solid var(--paper);box-shadow:6px 6px 0 rgba(0,0,0,.6);
+  background:var(--card);border:2px dashed var(--line-dk);box-shadow:0 0 18px rgba(40,220,90,.18);
   padding:14px 16px}
-.land-tag b{color:var(--acc)}
+.land-tag b{color:var(--line-dk)}
 .land-enter{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;gap:14px;align-items:center}
-.land-sub{font-size:7px;color:rgba(244,240,231,.6);z-index:2;letter-spacing:.5px}
-.land-lang{position:relative;z-index:2;background:transparent;border:2px solid rgba(244,240,231,.5);
-  color:rgba(244,240,231,.85);font-family:inherit;font-size:8px;letter-spacing:1px;padding:8px 16px;
-  cursor:pointer;box-shadow:3px 3px 0 rgba(212,163,115,.5)}
-.land-lang:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(212,163,115,.5)}
+.land-sub{font-size:7px;color:var(--ink-3);z-index:2;letter-spacing:.5px}
+.land-lang{position:relative;z-index:2;background:transparent;border:2px dashed var(--line-dk);
+  color:var(--ink-2);font-family:inherit;font-size:8px;letter-spacing:1px;padding:8px 16px;
+  cursor:pointer;box-shadow:0 0 10px rgba(90,240,130,.2)}
+.land-lang:active{transform:translate(2px,2px)}
 
 /* ── КНОПКИ ── */
 .btn{font-family:var(--pix);font-size:9px;letter-spacing:.5px;border:var(--bw) solid var(--ink);
@@ -394,7 +400,7 @@ nav button.on::before{content:'';position:absolute;top:0;width:24px;height:4px;b
 .post .acts span{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
 
 /* ── ДЕНЬ РЕСУРСА ── */
-#resDay{position:absolute;inset:0;z-index:300;background:var(--ink);color:var(--paper);
+#resDay{position:absolute;inset:0;z-index:300;background:var(--paper);color:var(--ink);
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;
   padding:30px 24px;text-align:center}
 #resDay.on{display:flex;animation:screenIn .4s steps(6)}
@@ -457,7 +463,7 @@ main{overflow-wrap:break-word;word-break:break-word}
   .agent-grid{grid-template-columns:repeat(2,1fr)}
   .greet .name{font-size:11px}
 }
-/* ═══════════ E-INK OVERRIDE (по референсу: точечные рамки, серые фаски) ═══════════ */
+/* ═══════════ PHOSPHOR CRT OVERRIDE (зелёный терминал: dashed-рамки, свечение, сканлайны) ═══════════ */
 body{background:var(--paper);color:var(--ink)}
 /* рамки-пунктир на панелях */
 .card,.sheet,.tool,.slot,.item,.bubble,.bubble2,.post,.sticker,
@@ -465,47 +471,66 @@ body{background:var(--paper);color:var(--ink)}
   border:var(--bdot) !important;
   border-radius:var(--r) !important;
 }
-.card{box-shadow:var(--sh-sm) !important}
-.sheet{background:var(--paper) !important;box-shadow:none !important;border:4px dotted var(--line-dk) !important;border-radius:8px !important}
-.modal{background:rgba(71,67,61,.34)}
-/* кнопки: светло-серая заливка + тёмная фаска снизу */
-.btn{background:var(--card);color:var(--ink);border:3px solid var(--line-dk) !important;
-  border-radius:var(--r) !important;box-shadow:var(--bev) !important;font-weight:700}
-.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line-dk) !important}
-.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink) !important}
-.btn.acc{background:var(--acc);color:var(--ink);border-color:var(--line-dk) !important}
-.btn.ghost{background:var(--card)}
-/* чипы/вкладки: неактивные — точечные серые, активная — тёмная сплошная */
-.chip{border:var(--bdot) !important;background:var(--paper);color:var(--ink-2);border-radius:var(--r);box-shadow:none}
-.chip.on{background:var(--ink);color:var(--paper);border:3px solid var(--ink) !important}
-/* поля ввода — точечная рамка */
-input,textarea{border:var(--bdot) !important;border-radius:var(--r) !important;background:var(--paper) !important;color:var(--ink)}
+.card{background:var(--card) !important;box-shadow:var(--sh-sm) !important}
+.sheet{background:var(--card) !important;box-shadow:0 0 24px rgba(40,220,90,.18) !important;border:2px dashed var(--line-dk) !important;border-radius:6px !important}
+/* ── ВЫБОР СКИНА ── */
+.skin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 12px}
+.skin-cell{background:var(--card);border:2px dashed var(--line);border-radius:6px;padding:6px 2px 4px;cursor:pointer;text-align:center;
+  box-shadow:var(--bev);transition:transform .05s}
+.skin-cell:active{transform:translateY(3px);box-shadow:0 1px 0 #1d5e31}
+.skin-cell img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 5px rgba(90,240,130,.4))}
+.skin-cell.sel{border:2px solid var(--line-dk);background:var(--card-2);box-shadow:0 0 12px rgba(90,240,130,.45)}
+#skinModal{z-index:200}
+#skinModal .skin-hint{font-size:8px;line-height:1.7;color:var(--ink-2);margin:2px 0 12px;letter-spacing:.3px}
+.modal{background:rgba(2,10,4,.72)}
+/* кнопки: тёмная подложка с зелёной dashed-рамкой */
+.btn{background:var(--card);color:var(--ink);border:2px dashed var(--line-dk) !important;
+  border-radius:var(--r) !important;box-shadow:var(--bev) !important;font-weight:700;text-shadow:var(--glow)}
+.btn:active{transform:translateY(4px);box-shadow:0 0 0 transparent !important}
+/* яркая фосфорная кнопка (главное действие) — зелёная заливка, чёрный текст */
+.btn.acc{background:var(--acc) !important;color:#04120a !important;border:2px solid var(--acc-d) !important;text-shadow:none}
+.btn.dark{background:var(--card-2);color:var(--ink);border-color:var(--line-dk) !important}
+.btn.ghost{background:transparent;color:var(--ink-2)}
+/* чипы/вкладки */
+.chip{border:var(--bdot) !important;background:var(--card);color:var(--ink-2);border-radius:var(--r);box-shadow:none}
+.chip.on{background:var(--acc);color:#04120a;border:2px solid var(--acc-d) !important;text-shadow:none}
+/* поля ввода — как терминал */
+input,textarea{border:var(--bdot) !important;border-radius:var(--r) !important;background:#04120a !important;color:var(--ink);text-shadow:var(--glow)}
 input::placeholder,textarea::placeholder{color:var(--ink-3)}
-/* тени — серые, не чёрные */
 .item,.slot,.tool,.bubble,.bubble2,.post,.closet button{box-shadow:var(--sh-sm) !important}
-.item:active,.closet button:active{box-shadow:1px 1px 0 var(--line) !important}
-.slot.locked{background:var(--card-2);box-shadow:2px 2px 0 var(--line) !important}
-/* заголовки модалок и тексты — тёмно-серые */
+.item:active,.closet button:active{box-shadow:0 0 4px rgba(90,240,130,.3) !important}
+.slot.locked{background:var(--card-2);box-shadow:inset 0 0 8px rgba(40,200,90,.15) !important}
+/* заголовки светятся */
 h1,h2,h3,b,strong,.st b{color:var(--ink)}
-/* точечные иконки-бейджи */
 .ui-dot, .x{border-radius:var(--r)}
-/* статус-бар/шапка — без чёрных линий */
-#nav button{border-top:var(--bdot);color:var(--ink-2)}
-#nav button.on{color:var(--ink)}
-/* убрать резкие чёрные 1-бит тени у картинок-аватарок на точечный контур */
+/* нижняя навигация */
+#nav button{border-top:var(--bdot);color:var(--ink-3)}
+#nav button.on{color:var(--ink);text-shadow:var(--glow)}
 .tool .ck,.item .ic{border:var(--bdot)}
-/* полоски прогресса — серые */
 .bar,.bar i{border-radius:var(--r)}
-/* акцентная подсветка (бывший беж) — тёплый серый */
-.bar i,.acc-fill{background:var(--line-dk)}
-/* лендинг — на бумаге */
+.bar i,.acc-fill{background:var(--line-dk);box-shadow:0 0 8px rgba(90,240,130,.5)}
+.bar{background:#04120a;border:var(--bdot)}
+/* лендинг */
 #landing{background:var(--paper);color:var(--ink) !important}
-#landing .land-tag{background:var(--card);color:var(--ink);border:var(--bdot-dk) !important;box-shadow:4px 4px 0 var(--line)}
+#landing .land-tag{background:var(--card);color:var(--ink);border:var(--bdot-dk) !important;box-shadow:0 0 14px rgba(40,220,90,.15)}
 #landing .land-tag b{color:var(--line-dk)}
 #landing .land-sub{color:var(--ink-3) !important}
-.land-lang{border-color:var(--line-dk) !important;color:var(--ink) !important;box-shadow:3px 3px 0 var(--line) !important}
-/* тёмные пузыри/панели оставляем, но текст в них бумажный */
-.msg.me .bubble2,.invquote{background:var(--ink-2) !important}
+.land-lang{border-color:var(--line-dk) !important;color:var(--ink) !important;box-shadow:0 0 10px rgba(90,240,130,.2) !important}
+/* пузыри чата */
+.msg.me .bubble2,.invquote{background:var(--card-2) !important;border:var(--bdot-dk) !important}
+/* светлые хардкод-цвета из e-ink эпохи → фосфор */
+.item.done .ic{background:var(--card-2) !important;border-color:var(--line-dk) !important}
+.slot .qd{color:var(--ink-3) !important}
+.slot.locked{background:var(--card) !important}
+.slot.locked .qm,.slot.locked .nm{color:var(--ink-3) !important}
+.invstats span{background:var(--card) !important;border-color:var(--line-dk) !important;color:var(--ink) !important;box-shadow:none !important}
+input:focus,textarea:focus{background:#04120a !important}
+.sheet{color:var(--ink)}
+.open{color:#04120a !important}
+/* рамка-контур приложения зелёным */
+.app{border-left:var(--bw) solid var(--line-dk) !important;border-right:var(--bw) solid var(--line-dk) !important;
+  box-shadow:inset 0 0 60px rgba(20,120,50,.18)}
+.statusbar{border-bottom:var(--bw) solid var(--line-dk) !important}
 
 </style>
 </head>
@@ -576,7 +601,7 @@ h1,h2,h3,b,strong,.st b{color:var(--ink)}
           <img class="bg pix" src="assets/scene_night.gif" alt="" style="image-rendering:pixelated">
           <div class="bubble" id="heroBubble">РАЙОН ЦВЕТОЧНЫЙ<br>ЖИВЁМ ЛУЧШЕ КАЖДЫЙ ДЕНЬ</div>
           <div class="himg">
-            <img class="pix" src="assets/hero.png" alt="герой">
+            <img class="pix skinImg" src="assets/hero.png" alt="герой">
             <img class="layer pix" id="hatLayer" src="assets/hat_cap.png" style="opacity:0" alt="">
             <img class="layer pix" id="accLayer" src="assets/acc_glasses.png" style="opacity:0" alt="">
           </div>
@@ -678,8 +703,8 @@ h1,h2,h3,b,strong,.st b{color:var(--ink)}
     <section class="screen" id="s-profile">
       <div class="card">
         <div class="row" style="gap:16px">
-          <div style="width:86px;height:86px;flex:0 0 86px;position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px">
-            <img class="pix" src="assets/hero.png" style="width:100%;height:100%">
+          <div style="width:86px;height:86px;flex:0 0 86px;position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px" onclick="openSkin(true)">
+            <img class="pix skinImg" src="assets/hero.png" style="width:100%;height:100%">
             <img class="layer pix" id="hatLayer2" src="assets/hat_cap.png" style="opacity:0">
             <img class="layer pix" id="accLayer2" src="assets/acc_glasses.png" style="opacity:0">
           </div>
@@ -695,6 +720,7 @@ h1,h2,h3,b,strong,.st b{color:var(--ink)}
 
       <div class="card" style="padding:14px">
         <div class="spread">
+          <div onclick="openSkin()" style="cursor:pointer"><img class="ic pix skinImg" src="assets/hero.png"><span>СМЕНИТЬ ОБЛИК</span></div>
           <div onclick="openCustom()" style="cursor:pointer"><img class="ic pix" src="assets/hat_crown.png"><span>ГАРДЕРОБ</span></div>
           <div onclick="openInv()" style="cursor:pointer"><img class="ic pix" src="assets/ar_backpack.png"><span>ИНВЕНТАРЬ</span></div>
           <div onclick="go('wiki')" style="cursor:pointer"><img class="ic pix" src="assets/nav_book.png"><span>ЗНАНИЯ</span></div>
@@ -850,6 +876,14 @@ h1,h2,h3,b,strong,.st b{color:var(--ink)}
   <p class="tiny center" style="font-size:8px;line-height:1.8;margin-bottom:12px">АДМИН-ПАНЕЛЬ ЗАЩИЩЕНА ПАРОЛЕМ.</p>
   <input id="adminPass" type="password" placeholder="ПАРОЛЬ" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;text-align:center;letter-spacing:3px">
   <button class="btn block acc mt8" onclick="adminLogin()"><img class="pix" src="assets/ui_lock.png">ВОЙТИ</button>
+</div></div>
+
+<div class="modal" id="skinModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_user.png" style="width:24px" onerror="this.src='assets/hero.png'">ВЫБЕРИ СЕБЯ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeSkinModal()"></div>
+  <p class="skin-hint center" data-en="CHOOSE YOUR LOOK — THIS IS HOW OTHERS WILL SEE YOU ON THE STREETS OF 21">ВЫБЕРИ СВОЙ ОБЛИК — ТАК ТЕБЯ БУДУТ ВИДЕТЬ НА УЛИЦАХ 21</p>
+  <div class="skin-grid" id="skinGrid"></div>
+  <button class="btn block acc" id="skinGoBtn" onclick="confirmSkin()" style="display:none"><img class="pix" src="assets/ui_done.png" onerror="this.src='assets/mk_done.png'">В ИГРУ!</button>
 </div></div>
 
 <div class="modal" id="adminModal"><div class="sheet">
@@ -1139,7 +1173,7 @@ let S_ = {};
 function load(){
   try{ S_ = JSON.parse(localStorage.getItem('app21')) || {}; }catch(e){ S_ = {}; }
   S_ = Object.assign({xp:0, karma:2430, coins:0, quests:{}, points:[], posts:[], userQuests:[], myPos:null, disputes:DEFAULT_DISPUTES.map(d=>({...d})),
-    projects:DEFAULT_PROJECTS.map(p=>({...p})), wallet:0, badges:[], hat:null, acc:null, dark:false,
+    projects:DEFAULT_PROJECTS.map(p=>({...p})), wallet:0, badges:[], hat:null, acc:null, skin:null, dark:false,
     articles:[], acts:Array.from({length:7},()=>3+Math.floor(Math.random()*14)), greeted:false, voted:{}, funded:{},
     seeded:false, forumPosts:[], tgUser:null, inventory:{}, lang:'ru', rewards:[], unlocked:[]}, S_);
   /* первичный сид: стартовое задание района */
@@ -1160,9 +1194,37 @@ function toast(t){ const el=document.getElementById('toast'); el.textContent=t; 
 function openModal(id){ document.getElementById(id).classList.add('on'); }
 function closeModal(id){ document.getElementById(id).classList.remove('on'); }
 function enterApp(){ document.getElementById('landing').classList.add('hide'); setTimeout(()=>{ document.getElementById('landing').style.display='none'; },500);
-  if(!S_.greeted){ S_.greeted=true; save(); setTimeout(openAi, 900); }
+  applySkin();
+  if(!S_.skin){ renderSkins(true); openModal('skinModal'); }
+  else if(!S_.greeted){ S_.greeted=true; save(); setTimeout(openAi, 900); }
   checkResourceDay(false);
 }
+/* ═══════════════════ СКИНЫ ═══════════════════ */
+const SKIN_COUNT=49;
+const skinSrc=i=> i==null?'assets/hero.png':`assets/skins/skin${String(i).padStart(2,'0')}.png`;
+function applySkin(){ document.querySelectorAll('.skinImg').forEach(e=>{ e.src=skinSrc(S_.skin); }); }
+let skinPick=null;
+function renderSkins(showGo){
+  skinPick=(S_.skin==null)?null:S_.skin;
+  const g=document.getElementById('skinGrid');
+  let html=`<div class="skin-cell ${S_.skin==null?'sel':''}" onclick="pickSkin(null,this)"><img src="assets/hero.png" alt="default"></div>`;
+  for(let i=0;i<SKIN_COUNT;i++){
+    html+=`<div class="skin-cell ${S_.skin===i?'sel':''}" onclick="pickSkin(${i},this)"><img src="${skinSrc(i)}" alt="skin${i}"></div>`;
+  }
+  g.innerHTML=html;
+  document.getElementById('skinGoBtn').style.display=showGo?'flex':'none';
+}
+function pickSkin(i,el){
+  skinPick=i;
+  document.querySelectorAll('#skinGrid .skin-cell').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function confirmSkin(){ S_.skin=skinPick; save(); applySkin(); closeModal('skinModal');
+  if(!S_.greeted){ S_.greeted=true; save(); setTimeout(openAi, 900); }
+  toast(S_.skin==null?'ОБЛИК ПО УМОЛЧАНИЮ':'ОБЛИК ВЫБРАН!');
+}
+function openSkin(){ renderSkins(true); openModal('skinModal'); }
+function closeSkinModal(){ if(S_.skin==null){ S_.skin=skinPick; save(); applySkin(); if(!S_.greeted){ S_.greeted=true; save(); setTimeout(openAi, 900); } } closeModal('skinModal'); }
 function go(t){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById('s-'+t).classList.add('on');
@@ -4284,6 +4346,7 @@ const I18N = {
   'ДЕНЬ РЕСУРСА':'RESOURCE DAY','НАГРАДА':'REWARD','ПОЛУЧИТЬ ПАЙЁК ✦':'GET RATION ✦','ПОНЯТНО ✦':'GOT IT ✦','ДАЛЕЕ ▶':'NEXT ▶',
   'ЗНАНИЯ РАЙОНА':'DISTRICT KNOWLEDGE','БАЗА ЗНАНИЙ':'KNOWLEDGE BASE','ИДЕИ':'IDEAS','ВОДА':'WATER','ЭНЕРГИЯ':'ENERGY','ЕДА':'FOOD','ДОБАВИТЬ СТАТЬЮ':'ADD ARTICLE',
   'ГАРДЕРОБ':'WARDROBE','ИНВЕНТАРЬ':'INVENTORY','ЗНАНИЯ':'KNOWLEDGE','ЗНАЧКИ':'BADGES','СУББОТНИК':'CLEANUP DAY',
+  'ВЫБЕРИ СЕБЯ':'CHOOSE YOUR LOOK','В ИГРУ!':'START!','ОБЛИК ВЫБРАН!':'LOOK SELECTED!','ОБЛИК ИЗМЕНЁН!':'LOOK CHANGED!','ОБЛИК ПО УМОЛЧАНИЮ':'DEFAULT LOOK','СМЕНИТЬ ОБЛИК':'CHANGE LOOK',
   'ЗНАЧКИ СКАУТА 21':'21 SCOUT BADGES','СТАТИСТИКА РАЙОНА':'DISTRICT STATS','ТЁМНАЯ / СВЕТЛАЯ':'DARK / LIGHT',
   'ГОЛОВНОЙ УБОР':'HEADWEAR','АКСЕССУАР':'ACCESSORY',
   'ЗА ЗАДАНИЕ':'FROM A QUEST','ЛЕНТА РАЙОНА':'DISTRICT FEED','ТОЧКИ РАЙОНА':'DISTRICT SPOTS','ТОЧЕК ПОКА НЕТ.':'NO SPOTS YET.',
