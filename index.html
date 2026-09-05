@@ -9,21 +9,26 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
-  --paper:#f4f0e7;      /* бумага e-ink */
-  --card:#fbf7ec;       /* карточки */
-  --card-2:#efe9d8;     /* вторичная подложка */
-  --ink:#141414;        /* чернила */
-  --ink-2:#3d3a34;      /* тёмно-серый текст */
-  --ink-3:#7c766a;      /* приглушённый */
-  --line:#141414;
-  --acc:#d4a373;
-  --acc-d:#b9854a;
+  --paper:#cec4ab;      /* тёплая e-ink бумага */
+  --card:#dcd5c1;       /* светло-серые панели/кнопки */
+  --card-2:#cfc7b0;     /* вторичная подложка */
+  --ink:#47433d;        /* тёмно-серые чернила (не чёрный) */
+  --ink-2:#5b564d;      /* тёмно-серый текст */
+  --ink-3:#8c8574;      /* приглушённый */
+  --line:#a49a86;       /* средне-серая линия (точечные рамки) */
+  --line-dk:#837a68;    /* тёмнее — для активных/фаски */
+  --acc:#bdb49c;        /* e-ink серый вместо бежевого */
+  --acc-d:#9c947f;
   --bw:3px;             /* толщина рамок */
-  --sh:4px 4px 0 var(--ink);   /* жёсткая тень */
-  --sh-sm:3px 3px 0 var(--ink);
-  --r:6px;
+  --bdot:3px dotted var(--line);
+  --bdot-dk:3px dotted var(--line-dk);
+  --sh:4px 4px 0 var(--line);   /* серая жёсткая тень */
+  --sh-sm:3px 3px 0 var(--line);
+  --bev:0 5px 0 var(--line-dk); /* фаска кнопки снизу */
+  --r:4px;
   --pix:'Press Start 2P', ui-monospace, monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -68,13 +73,17 @@ button{font-family:inherit}
 #landing::before{content:'';position:absolute;left:0;right:0;bottom:0;height:44%;
   background:url('assets/mountains.png') bottom/cover no-repeat;opacity:.92;filter:grayscale(1) contrast(1.1)}
 .land-logo{width:70%;max-width:280px;position:relative;z-index:2;
-  filter:drop-shadow(5px 6px 0 #000);animation:floaty 3.5s steps(20) infinite}
+  filter:invert(1) brightness(1.7) drop-shadow(5px 6px 0 rgba(0,0,0,.55));animation:floaty 3.5s steps(20) infinite}
 .land-tag{position:relative;z-index:2;text-align:center;font-size:9px;line-height:2.2;
   background:var(--ink);border:var(--bw) solid var(--paper);box-shadow:6px 6px 0 rgba(0,0,0,.6);
   padding:14px 16px}
 .land-tag b{color:var(--acc)}
 .land-enter{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;gap:14px;align-items:center}
 .land-sub{font-size:7px;color:rgba(244,240,231,.6);z-index:2;letter-spacing:.5px}
+.land-lang{position:relative;z-index:2;background:transparent;border:2px solid rgba(244,240,231,.5);
+  color:rgba(244,240,231,.85);font-family:inherit;font-size:8px;letter-spacing:1px;padding:8px 16px;
+  cursor:pointer;box-shadow:3px 3px 0 rgba(212,163,115,.5)}
+.land-lang:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(212,163,115,.5)}
 
 /* ── КНОПКИ ── */
 .btn{font-family:var(--pix);font-size:9px;letter-spacing:.5px;border:var(--bw) solid var(--ink);
@@ -156,6 +165,35 @@ main::-webkit-scrollbar{display:none}
 .bubble::after{content:'';position:absolute;bottom:-9px;left:50%;transform:translateX(-50%) rotate(45deg);
   width:14px;height:14px;background:var(--card);border-right:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink)}
 
+/* пиксельная сцена двора под героем */
+.scene-stage{position:relative;border:var(--bw) solid var(--ink);border-radius:var(--r);
+  background:var(--card-2);overflow:hidden;margin:2px 0 14px;box-shadow:var(--sh-sm)}
+.scene-stage>img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.scene-stage .himg{position:absolute;z-index:2;width:108px;height:108px;left:27%;bottom:14px;margin:0;display:block}
+.scene-stage .himg>img:first-child{width:100%;height:100%;image-rendering:pixelated;filter:drop-shadow(0 4px 0 rgba(0,0,0,.25))}
+.scene-stage .himg .layer{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated}
+.scene-stage .bubble{position:relative;z-index:3;display:block;margin:14px auto 0;max-width:88%;text-align:center}
+.scene-stage{height:340px}
+.scene-stage .bubble{position:absolute;z-index:3;top:16px;left:6%;right:6%;margin:0}
+/* оживление сцены */
+.scene-stage .cloud{position:absolute;z-index:1;image-rendering:pixelated;opacity:.95;animation:cloudrift linear infinite}
+.scene-stage .cloud.c1{width:64px;top:14px;left:-30%;animation-duration:26s}
+.scene-stage .cloud.c2{width:46px;top:38px;left:-40%;animation-duration:38s;animation-delay:-12s;opacity:.8}
+@keyframes cloudrift{from{transform:translateX(-40px)}to{transform:translateX(460px)}}
+.scene-stage .bird{position:absolute;z-index:1;width:14px;image-rendering:pixelated;animation:birdfly 19s linear infinite}
+.scene-stage .bird.b1{top:30px;left:-10%;animation-duration:21s}
+.scene-stage .bird.b2{top:52px;left:-10%;animation-duration:27s;animation-delay:-14s;width:11px}
+@keyframes birdfly{0%{transform:translate(0,0)}25%{transform:translate(110px,-8px)}50%{transform:translate(220px,4px)}75%{transform:translate(330px,-6px)}100%{transform:translate(440px,0)}}
+.scene-stage .himg img:first-child{animation:herobob 2.2s steps(2,end) infinite}
+@keyframes herobob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+#heroBubble{animation:bubblepop 30s steps(1,end) infinite}
+@keyframes bubblepop{0%,93%{opacity:1}95%,99%{opacity:.85}100%{opacity:1}}
+.coin-bump{animation:coinbump .35s steps(3)}
+@keyframes coinbump{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+.empty-note{border:var(--bw) dashed var(--ink-3);border-radius:var(--r);padding:22px 16px;text-align:center;
+  font-size:9px;line-height:2;color:var(--ink-2);margin:10px 0}
+.empty-note img{image-rendering:pixelated;width:40px;display:block;margin:0 auto 10px;opacity:.85}
+
 /* быстрые действия */
 .hero-cta{display:flex;gap:10px;margin-top:12px}
 .hero-cta .btn{flex:1;font-size:7px;padding:11px 6px;flex-direction:column;gap:6px;min-height:64px}
@@ -194,7 +232,7 @@ main::-webkit-scrollbar{display:none}
 .map-wrap{position:relative;height:58vh;border:var(--bw) solid var(--ink);overflow:hidden;
   background:var(--card-2);box-shadow:var(--sh);border-radius:var(--r)}
 #ymap{position:absolute;inset:0;filter:grayscale(1) contrast(1.18) brightness(1.04)}
-.map-fallback{position:absolute;inset:0;background:url('assets/map_bg.png') center/cover}
+.map-fallback{position:absolute;inset:0;background:url('assets/scene_city.png') center/cover}
 .marker{position:absolute;width:34px;height:44px;transform:translate(-50%,-100%);cursor:pointer;z-index:5;transition:transform .1s}
 .marker:active{transform:translate(-50%,-100%) scale(1.15)}
 .marker img{width:100%;height:100%;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.35));image-rendering:pixelated}
@@ -228,6 +266,20 @@ main::-webkit-scrollbar{display:none}
 .closet button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
 .closet button img{width:100%;image-rendering:pixelated}
 .closet button.sel{background:var(--acc)}
+/* ── ИНВЕНТАРЬ ── */
+.invgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:10px 0}
+.slot{background:var(--card);border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:9px 6px 7px;text-align:center;position:relative}
+.slot img{width:62px;height:62px;object-fit:contain;image-rendering:pixelated}
+.slot .nm{font-size:6.5px;line-height:1.5;margin-top:6px;display:block;letter-spacing:.5px}
+.slot .qd{font-size:6px;color:#7a7468;margin-top:3px;display:block;line-height:1.5}
+.slot.locked{background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+.slot.locked .qm{font-size:30px;line-height:62px;display:block;color:#bdb6a8}
+.slot.locked .nm{color:#bdb6a8}
+.slot .nb{position:absolute;top:-9px;left:-7px;background:var(--acc);border:2px solid var(--ink);
+  font-size:6px;padding:2px 4px;box-shadow:2px 2px 0 var(--ink);letter-spacing:.5px}
+.invstats{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
+.invstats span{font-size:6.5px;background:var(--paper);border:2px solid var(--ink);padding:4px 6px;box-shadow:2px 2px 0 var(--ink)}
+.invquote{background:var(--ink);color:var(--paper);font-size:7px;line-height:1.8;padding:10px 12px;margin-top:12px;text-align:center;box-shadow:4px 4px 0 var(--acc)}
 .closet button.sel::after{content:'✓';position:absolute;top:-8px;right:-8px;background:var(--ink);color:var(--paper);
   font-size:9px;width:20px;height:20px;border-radius:var(--r);border:2px solid var(--paper);
   display:flex;align-items:center;justify-content:center}
@@ -405,6 +457,56 @@ main{overflow-wrap:break-word;word-break:break-word}
   .agent-grid{grid-template-columns:repeat(2,1fr)}
   .greet .name{font-size:11px}
 }
+/* ═══════════ E-INK OVERRIDE (по референсу: точечные рамки, серые фаски) ═══════════ */
+body{background:var(--paper);color:var(--ink)}
+/* рамки-пунктир на панелях */
+.card,.sheet,.tool,.slot,.item,.bubble,.bubble2,.post,.sticker,
+.modal .sheet,.qrbox,.closet button,.invquote{
+  border:var(--bdot) !important;
+  border-radius:var(--r) !important;
+}
+.card{box-shadow:var(--sh-sm) !important}
+.sheet{background:var(--paper) !important;box-shadow:none !important;border:4px dotted var(--line-dk) !important;border-radius:8px !important}
+.modal{background:rgba(71,67,61,.34)}
+/* кнопки: светло-серая заливка + тёмная фаска снизу */
+.btn{background:var(--card);color:var(--ink);border:3px solid var(--line-dk) !important;
+  border-radius:var(--r) !important;box-shadow:var(--bev) !important;font-weight:700}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line-dk) !important}
+.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink) !important}
+.btn.acc{background:var(--acc);color:var(--ink);border-color:var(--line-dk) !important}
+.btn.ghost{background:var(--card)}
+/* чипы/вкладки: неактивные — точечные серые, активная — тёмная сплошная */
+.chip{border:var(--bdot) !important;background:var(--paper);color:var(--ink-2);border-radius:var(--r);box-shadow:none}
+.chip.on{background:var(--ink);color:var(--paper);border:3px solid var(--ink) !important}
+/* поля ввода — точечная рамка */
+input,textarea{border:var(--bdot) !important;border-radius:var(--r) !important;background:var(--paper) !important;color:var(--ink)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+/* тени — серые, не чёрные */
+.item,.slot,.tool,.bubble,.bubble2,.post,.closet button{box-shadow:var(--sh-sm) !important}
+.item:active,.closet button:active{box-shadow:1px 1px 0 var(--line) !important}
+.slot.locked{background:var(--card-2);box-shadow:2px 2px 0 var(--line) !important}
+/* заголовки модалок и тексты — тёмно-серые */
+h1,h2,h3,b,strong,.st b{color:var(--ink)}
+/* точечные иконки-бейджи */
+.ui-dot, .x{border-radius:var(--r)}
+/* статус-бар/шапка — без чёрных линий */
+#nav button{border-top:var(--bdot);color:var(--ink-2)}
+#nav button.on{color:var(--ink)}
+/* убрать резкие чёрные 1-бит тени у картинок-аватарок на точечный контур */
+.tool .ck,.item .ic{border:var(--bdot)}
+/* полоски прогресса — серые */
+.bar,.bar i{border-radius:var(--r)}
+/* акцентная подсветка (бывший беж) — тёплый серый */
+.bar i,.acc-fill{background:var(--line-dk)}
+/* лендинг — на бумаге */
+#landing{background:var(--paper);color:var(--ink) !important}
+#landing .land-tag{background:var(--card);color:var(--ink);border:var(--bdot-dk) !important;box-shadow:4px 4px 0 var(--line)}
+#landing .land-tag b{color:var(--line-dk)}
+#landing .land-sub{color:var(--ink-3) !important}
+.land-lang{border-color:var(--line-dk) !important;color:var(--ink) !important;box-shadow:3px 3px 0 var(--line) !important}
+/* тёмные пузыри/панели оставляем, но текст в них бумажный */
+.msg.me .bubble2,.invquote{background:var(--ink-2) !important}
+
 </style>
 </head>
 <body>
@@ -414,7 +516,7 @@ main{overflow-wrap:break-word;word-break:break-word}
   <!-- ══════════ ЛЕНДИНГ ══════════ -->
   <div id="landing">
     <img class="land-logo pix" src="assets/logo.png" alt="21">
-    <div class="land-tag">
+    <div class="land-tag" data-en="RPG ECOSYSTEM<br>OF SELF-SUFFICIENT LIFE<br><b>a city we fix ourselves</b>">
       РПГ-ЭКОСИСТЕМА<br>АВТОНОМНОЙ ЖИЗНИ<br>
       <b>город, который мы чиним сами</b>
     </div>
@@ -422,7 +524,8 @@ main{overflow-wrap:break-word;word-break:break-word}
       <button class="btn dark block" onclick="enterApp()">
         <img class="pix" src="assets/ui_tg.png" alt="">ВОЙТИ
       </button>
-      <span class="land-sub">каждое 21-е число — субботник</span>
+      <button class="land-lang" onclick="toggleLang()" id="langBtnLand">🌐 RU</button>
+      <span class="land-sub" data-en="every 21st is a cleanup day">каждое 21-е число — субботник</span>
     </div>
   </div>
 
@@ -444,7 +547,7 @@ main{overflow-wrap:break-word;word-break:break-word}
     <div class="h-title" id="hTitle">21</div>
     <div class="h-ico">
       <img class="pix" src="assets/ui_bell.png" alt="события" onclick="checkResourceDay(true)">
-      <img class="pix" src="assets/ui_lock.png" alt="админ" onclick="openModal('adminModal')">
+      <img class="pix" src="assets/ui_lock.png" alt="админ" onclick="openAdmin()" style="cursor:pointer">
     </div>
   </header>
 
@@ -468,8 +571,9 @@ main{overflow-wrap:break-word;word-break:break-word}
         <div class="bar-label"><span id="lvlName">УРОВЕНЬ 1 · НОВИЧОК</span><span id="lvlXp" class="pix-num">0 / 100</span></div>
       </div>
 
-      <div class="card" style="padding:22px 20px">
-        <div class="hero-stage">
+      <div class="card" style="padding:12px">
+        <div class="scene-stage">
+          <img class="bg pix" src="assets/scene_night.gif" alt="" style="image-rendering:pixelated">
           <div class="bubble" id="heroBubble">РАЙОН ЦВЕТОЧНЫЙ<br>ЖИВЁМ ЛУЧШЕ КАЖДЫЙ ДЕНЬ</div>
           <div class="himg">
             <img class="pix" src="assets/hero.png" alt="герой">
@@ -477,12 +581,12 @@ main{overflow-wrap:break-word;word-break:break-word}
             <img class="layer pix" id="accLayer" src="assets/acc_glasses.png" style="opacity:0" alt="">
           </div>
         </div>
-        <button class="btn block acc mt8" onclick="go('quests')">
+        <button class="btn block acc" onclick="go('quests')">
           <img class="pix" src="assets/nav_sword.png" alt="">КВЕСТЫ СЕГОДНЯ · <b id="activeCount">0</b>
         </button>
         <div class="hero-cta">
           <button class="btn ghost" onclick="go('map')"><img class="pix" src="assets/nav_map.png">КАРТА</button>
-          <button class="btn ghost" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">ОБЩАК</button>
+          <button class="btn ghost" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">БЮДЖЕТ</button>
           <button class="btn ghost" onclick="openCourt()"><img class="pix" src="assets/ui_vote.png">СУД</button>
         </div>
       </div>
@@ -549,7 +653,9 @@ main{overflow-wrap:break-word;word-break:break-word}
       </div>
       <div id="questList"></div>
       <button class="btn block acc" onclick="openCourt()"><img class="pix" src="assets/ui_vote.png">СУД СООБЩЕСТВА</button>
-      <button class="btn block mt8" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">ОБЩИЙ КОШЕЛЁК</button>
+      <button class="btn block mt8" onclick="openForum()"><img class="pix" src="assets/ui_chat.png">ФОРУМ РАЙОНА</button>
+      <button class="btn block mt8" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">БЮДЖЕТ</button>
+      <button class="btn block ghost mt8" onclick="openModal('volModal')"><img class="pix" src="assets/ui_paw.png">СТАТЬ ВОЛОНТЁРОМ 21</button>
       <button class="btn block mt8" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
     </section>
 
@@ -590,6 +696,7 @@ main{overflow-wrap:break-word;word-break:break-word}
       <div class="card" style="padding:14px">
         <div class="spread">
           <div onclick="openCustom()" style="cursor:pointer"><img class="ic pix" src="assets/hat_crown.png"><span>ГАРДЕРОБ</span></div>
+          <div onclick="openInv()" style="cursor:pointer"><img class="ic pix" src="assets/ar_backpack.png"><span>ИНВЕНТАРЬ</span></div>
           <div onclick="go('wiki')" style="cursor:pointer"><img class="ic pix" src="assets/nav_book.png"><span>ЗНАНИЯ</span></div>
           <div onclick="openBadges()" style="cursor:pointer"><img class="ic pix" src="assets/ui_trophy.png"><span>ЗНАЧКИ</span></div>
           <div onclick="checkResourceDay(true)" style="cursor:pointer"><img class="ic pix" src="assets/ui_calendar.png"><span>СУББОТНИК</span></div>
@@ -607,6 +714,7 @@ main{overflow-wrap:break-word;word-break:break-word}
       </div>
 
       <button class="btn block" onclick="toggleTheme()"><img class="pix" src="assets/ui_star.png">ТЁМНАЯ / СВЕТЛАЯ</button>
+      <button class="btn block mt8" id="langBtn" onclick="toggleLang()">🌐 RU</button>
       <button class="btn block mt8" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
     </section>
   </main>
@@ -649,7 +757,7 @@ main{overflow-wrap:break-word;word-break:break-word}
     <img class="pix" src="assets/robot.png" style="width:56px;height:56px;flex:0 0 56px">
     <div>
       <div style="font-size:16px;font-weight:800">Городской ассистент 21</div>
-      <div class="tiny" style="margin-top:3px">Знает про воду, ремонт, квесты, суд и общий кошелёк. Подскажет, как починить район.</div>
+      <div class="tiny" style="margin-top:3px">Знает про воду, ремонт, квесты, суд и бюджет. Подскажет, как починить район.</div>
     </div>
   </div>
   <div class="chatbox" id="aiChat" style="max-height:44vh;overflow-y:auto;margin-top:8px"></div>
@@ -671,7 +779,7 @@ main{overflow-wrap:break-word;word-break:break-word}
 
 <!-- Краудфандинг -->
 <div class="modal" id="crowdModal"><div class="sheet">
-  <div class="st"><b><img class="pix" src="assets/ui_coin.png" style="width:24px">ОБЩИЙ КОШЕЛЁК</b>
+  <div class="st"><b><img class="pix" src="assets/ui_coin.png" style="width:24px">БЮДЖЕТ</b>
     <img class="x pix" src="assets/ui_close.png" onclick="closeModal('crowdModal')"></div>
   <div class="card" style="box-shadow:none">
     <div class="row between">
@@ -704,6 +812,24 @@ main{overflow-wrap:break-word;word-break:break-word}
   <div class="closet" id="accGrid"></div>
 </div></div>
 
+<!-- Инвентарь / артефакты -->
+<div class="modal" id="invModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ar_backpack.png" style="width:24px">ИНВЕНТАРЬ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('invModal')"></div>
+  <p class="tiny center" id="invIntro" style="font-size:7px;line-height:1.7"></p>
+  <div class="invstats" id="invStats"></div>
+  <div class="invgrid" id="invGrid"></div>
+  <div class="invquote" data-en="BE KINDER TO YOURSELF.<br>YOU’RE DOING THE BEST YOU CAN.">БУДЬ ДОБРЕЕ К СЕБЕ.<br>ТЫ ДЕЛАЕШЬ ЛУЧШЕЕ, ЧТО МОЖЕШЬ.</div>
+  <button class="btn block dark mt16" onclick="closeModal('invModal');openReward()"><img class="pix" src="assets/ui_lock.png">ВВЕСТИ КОД НАГРАДЫ</button>
+</div></div>
+
+<!-- Ввод секретного кода награды -->
+<div class="modal" id="rewardModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">СЕКРЕТНЫЙ КОД</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('rewardModal')"></div>
+  <div id="rewardBody"></div>
+</div></div>
+
 <!-- Стикер -->
 <div class="modal" id="stickerModal"><div class="sheet">
   <div class="st"><b><img class="pix" src="assets/ui_qr.png" style="width:24px">СТИКЕР 21</b>
@@ -717,15 +843,45 @@ main{overflow-wrap:break-word;word-break:break-word}
 </div></div>
 
 <!-- Админ -->
+<!-- Вход в админку по паролю -->
+<div class="modal" id="adminPassModal"><div class="sheet" style="max-width:340px">
+  <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">ВХОД ДЛЯ АДМИНА</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('adminPassModal')"></div>
+  <p class="tiny center" style="font-size:8px;line-height:1.8;margin-bottom:12px">АДМИН-ПАНЕЛЬ ЗАЩИЩЕНА ПАРОЛЕМ.</p>
+  <input id="adminPass" type="password" placeholder="ПАРОЛЬ" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;text-align:center;letter-spacing:3px">
+  <button class="btn block acc mt8" onclick="adminLogin()"><img class="pix" src="assets/ui_lock.png">ВОЙТИ</button>
+</div></div>
+
 <div class="modal" id="adminModal"><div class="sheet">
   <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">АДМИН-ПАНЕЛЬ</b>
     <img class="x pix" src="assets/ui_close.png" onclick="closeModal('adminModal')"></div>
   <div class="chips" style="margin-bottom:10px">
-    <button class="chip on" onclick="admTab('problem',this)">ПРОБЛЕМА</button>
+    <button class="chip on" onclick="admTab('quest',this)">ЗАДАНИЕ</button>
+    <button class="chip" onclick="admTab('problem',this)">ПРОБЛЕМА</button>
     <button class="chip" onclick="admTab('post',this)">ПОСТ</button>
+    <button class="chip" onclick="admTab('reward',this)">НАГРАДА</button>
     <button class="chip" onclick="admTab('stats',this)">СТАТИСТИКА</button>
   </div>
-  <div id="admProblem">
+  <div id="admQuest">
+    <label class="f">НАЗВАНИЕ ЗАДАНИЯ</label><input id="aqName" placeholder="ПОЧИНИТЬ КАЧЕЛИ ВО ДВОРЕ">
+    <label class="f">ОПИСАНИЕ ЗАДАНИЯ *</label><textarea id="aqDesc" rows="3" placeholder="ЧТО И ГДЕ СДЕЛАТЬ, ПОДРОБНО"></textarea>
+    <label class="f">КООРДИНАТЫ — ШИРОТА И ДОЛГОТА *</label>
+    <div class="row" style="gap:8px">
+      <input id="aqLat" placeholder="ШИРОТА · 48.78">
+      <input id="aqLng" placeholder="ДОЛГОТА · 44.77">
+    </div>
+    <button class="btn block ghost mt8" onclick="getMyPos()"><img class="pix" src="assets/mk_done.png">ВЗЯТЬ МОИ GPS-КООРДИНАТЫ</button>
+    <label class="f mt16">КАРТИНКА ЗАДАНИЯ (ПРИЛОЖИТЬ ФОТО)</label>
+    <input type="file" id="aqFile" accept="image/*" style="font-size:8px">
+    <img id="aqPrev" style="display:none;max-width:120px;margin:8px 0;image-rendering:pixelated;border:var(--bw) solid var(--ink)">
+    <label class="f mt16">НАГРАДА</label>
+    <div class="row" style="gap:8px">
+      <input id="aqXp" type="number" placeholder="XP · 50" value="50">
+      <input id="aqKarma" type="number" placeholder="КАРМА · 10" value="10">
+    </div>
+    <button class="btn block acc mt16" onclick="addQuest()"><img class="pix" src="assets/ui_plus.png">ОПУБЛИКОВАТЬ ЗАДАНИЕ НА КАРТЕ</button>
+  </div>
+  <div id="admProblem" style="display:none">
     <label class="f">НАЗВАНИЕ</label><input id="apName" placeholder="ЯМА НА ДОРОГЕ">
     <label class="f">ОПИСАНИЕ / ПИКТОГРАММА</label>
     <div class="chips" id="apIcons" style="margin-bottom:8px"></div>
@@ -738,10 +894,67 @@ main{overflow-wrap:break-word;word-break:break-word}
     <div class="chips" id="apPostIcons" style="margin-bottom:8px"></div>
     <button class="btn block acc" onclick="addPost()"><img class="pix" src="assets/ui_edit.png">ОПУБЛИКОВАТЬ В ЛЕНТУ</button>
   </div>
+  <div id="admReward" style="display:none">
+    <label class="f">НАЗВАНИЕ ЭКСКЛЮЗИВНОГО АЙТЕМА</label><input id="arName" placeholder="НАПР.: СЕКРЕТНЫЙ СКЛАД ИНСТРУМЕНТОВ 21">
+    <label class="f">ОПИСАНИЕ НАГРАДЫ (ССЫЛКИ НА ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ)</label>
+    <textarea id="arDesc" rows="5" placeholder="ОДНА СТРОКА — ОДНА ССЫЛКА И ПОДПИСЬ. НАПР.: HTTPS://T.ME/+XXX — ЧАТ ВОЛОНТЁРОВ"></textarea>
+    <label class="f mt16">СЕКРЕТНЫЙ ПАРОЛЬ (ЕГО ВВОДИТ ПОЛЬЗОВАТЕЛЬ)</label><input id="arCode" placeholder="НАПР.: 21-DRUZHBA-KEY">
+    <label class="f mt16">НАГРАДА</label>
+    <div class="row" style="gap:8px">
+      <input id="arXp" type="number" placeholder="XP · 80" value="80">
+      <input id="arKarma" type="number" placeholder="КАРМА · 20" value="20">
+    </div>
+    <button class="btn block acc mt16" id="arSubmit" onclick="addRewardItem()"><img class="pix" src="assets/ui_plus.png">СОЗДАТЬ НАГРАДУ</button>
+    <button class="btn block ghost mt8" id="arCancel" style="display:none" onclick="editRewardCancel()">ОТМЕНИТЬ РЕДАКТИРОВАНИЕ</button>
+    <div id="arList" style="margin-top:14px"></div>
+  </div>
   <div id="admStats" style="display:none">
     <div class="chart" id="actChart"></div>
     <div class="spread mt16" id="admStatNums"></div>
   </div>
+</div></div>
+
+<!-- Статья энциклопедии -->
+<div class="modal" id="artModal"><div class="sheet">
+  <div class="st"><b id="artTitle">СТАТЬЯ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('artModal')"></div>
+  <div id="artBody" style="font-size:9.5px;line-height:2.1;color:var(--ink-2)"></div>
+  <button class="btn block acc mt16" onclick="closeModal('artModal')">ПОНЯТНО ✦</button>
+</div></div>
+
+<!-- Форум -->
+<div class="modal" id="forumModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_chat.png" style="width:24px">ФОРУМ РАЙОНА</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('forumModal')"></div>
+  <div class="chips" style="margin-bottom:10px">
+    <button class="chip on" onclick="forumTab('recent',this)">ПОСЛЕДНИЕ</button>
+    <button class="chip" onclick="forumTab('mine',this)">МОИ ТЕМЫ</button>
+  </div>
+  <div id="forumList"></div>
+  <div id="forumCompose"></div>
+</div></div>
+
+<!-- Как стать волонтёром -->
+<div class="modal" id="volModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_paw.png" style="width:22px">КАК СТАТЬ ВОЛОНТЁРОМ 21</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('volModal')"></div>
+  <div style="font-size:9.5px;line-height:2.1;color:var(--ink-2)"
+   data-en="<div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>1 · COLLECT DISTRICT PROBLEMS</b><br>Walk your yard and street: broken stairs, dark lamps, leaks, trash, broken playgrounds. Take photos and create quests in the app (or send a list by email).</div><div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>2 · WRITE TO US</b><br>Send the list of district problems and your contact to <b style='color:var(--ink)'>21movement@gmail.com</b> — we’ll connect you to the district movement.</div><div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>3 · MARK THE CITY</b><br>Write «21» on the streets and put QR stickers on doorways and boards — so neighbours find the app and join in.</div>">
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">1 · СОБЕРИ ПРОБЛЕМЫ РАЙОНА</b><br>
+      Пройди свой двор и улицу: разбитые лестницы, тёмные фонари, течи, мусор, сломанные горки. Сфотографируй и заведи задания в приложении (или пришли списком на почту).
+    </div>
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">2 · НАПИШИ НАМ</b><br>
+      Отправь список проблем района и свой контакт на почту <b style="color:var(--ink)">21movement@gmail.com</b> — подключим тебя к движению района.
+    </div>
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">3 · ОТМЕЧАЙ ГОРОД</b><br>
+      Пиши «21» на улицах и клеи стикеры с QR-кодом на подъездах и досках — чтобы соседи находили приложение и включались.
+    </div>
+  </div>
+  <button class="btn block acc" onclick="volMail()"><img class="pix" src="assets/ui_edit.png">НАПИСАТЬ 21MOVEMENT@GMAIL.COM</button>
+  <button class="btn block mt8" onclick="closeModal('volModal');openSticker()"><img class="pix" src="assets/ui_qr.png">СКАЧАТЬ QR-СТИКЕР</button>
 </div></div>
 
 <!-- День ресурса -->
@@ -763,58 +976,88 @@ const A = f => 'assets/'+f;
 const LEVELS = ["НОВИЧОК","СОСЕД","ПОМОЩНИК","ДРУЖИННИК","МАСТЕРОВОЙ","СТРАЖ ДВОРА","ЗНАТЕЛЬ","КРАЕВЕД","НАСТАВНИК","ГЕРОЙ ДВОРА","ХРАНИТЕЛЬ","ДЕСЯТНИК","ГОЛОС РАЙОНА","СТАРОСТА","МАСТЕР РАЙОНА","СОВЕТНИК","ОБЩИННИК","СТРАЖ ГОРОДА","ЛЕГЕНДА ДВОРА","МЭР РАЙОНА","ГЕРОЙ 21","ХРАНИТЕЛЬ ЗНАНИЙ","НАРОДНЫЙ ЛИДЕР","МИРОУСТРОИТЕЛЬ","ЛЕГЕНДА 21"];
 const xpNeed = l => 100*l;
 
-const QUESTS = [
-  {id:'bench', ic:'q_bench.png', t:'ПОЧИНИТЬ СКАМЕЙКУ', xp:50, karma:10, dist:120, badge:'bd_repair.png',
-   tools:['t_hammer.png|МОЛОТОК|забить, подправить','t_screwdriver.png|ОТВЁРТКА|закрутить, собрать'],
-   steps:["ЧТОБЫ ПОЧИНИТЬ СКАМЕЙКУ, ДОСТАНЬ ИНСТРУМЕНТЫ И НАЖМИ НА КАЖДЫЙ, КОГДА ВОЗЬМЁШЬ.","ОТЛИЧНО! ПРИЛОЖИ ДОСКУ, ЗАКРУТИ САМОРЕЗЫ, ПРОВЕРЬ, ЧТОБЫ НЕ ШАТАЛОСЬ.","ПРИШЛИ ФОТО РЕЗУЛЬТАТА ИЛИ ЗАПИШИ ГОЛОСОМ — И КВЕСТ ЗАЧТЁН."]},
-  {id:'hands', ic:'q_hands.png', t:'ПОМОЧЬ СОСЕДУ', xp:40, karma:8, dist:90, badge:'bd_help.png',
-   tools:['t_rope.png|ВЕРЁВКА|связать, поднять','t_flash.png|ФОНАРЬ|осветить, найти'],
-   steps:["СОСЕДУ НУЖНА ПАРА РУК: ДОНЕСТИ ПОКУПКИ, ПОДНЯТЬ ТЯЖЁСТЬ.","ВОЗЬМИ ФОНАРЬ И ВЕРЁВКУ — ВЕЧЕРОМ ТЕМНО.","СДЕЛАНО? ОТМЕЧАЙ ФОТО ИЛИ ГОЛОСОМ."]},
-  {id:'books', ic:'q_books.png', t:'ОБМЕН КНИГАМИ', xp:30, karma:5, dist:60, badge:'bd_book.png',
-   tools:['t_tape.png|ИЗОЛЕНТА|починить переплёт'],
-   steps:["КНИГИ ПО ВЫЖИВАНИЮ ДОЛЖНЫ ХОДИТЬ ПО РУКАМ.","ПОДКЛЕЙ ВЕТХИЙ ПЕРЕПЛЁТ ИЗОЛЕНТОЙ.","ОСТАВЬ КНИГУ В ТОЧКЕ ОБМЕНА И СФОТОГРАФИРУЙ."]},
-  {id:'easel', ic:'q_easel.png', t:'МАСТЕР-КЛАСС', xp:60, karma:15, dist:210, badge:'bd_voice.png',
-   tools:['t_pliers.png|ПЛОСКОГУБЦЫ|зажать, согнуть','t_knife.png|НОЖ|отрезать, зачистить'],
-   steps:["НАУЧИ СОСЕДЕЙ ТОМУ, ЧТО УМЕЕШЬ: РЕМОНТ, ФИЛЬТР ВОДЫ, ОГОРОД.","ПОДГОТОВЬ ИНСТРУМЕНТЫ ДЛЯ ПОКАЗА.","ЗАПИШИ ГОЛОСОВУЮ ИНСТРУКЦИЮ ИЛИ СФОТОГРАФИРУЙ ПРОЦЕСС."]},
-  {id:'bin', ic:'q_recycle.png', t:'КОНТЕЙНЕР ДЛЯ РАЗДЕЛЬНОГО СБОРА', xp:80, karma:25, dist:340, badge:'bd_garden.png',
-   tools:['t_hammer.png|МОЛОТОК|собрать каркас','t_screwdriver.png|ОТВЁРТКА|закрепить'],
-   steps:["РАЗДЕЛЬНЫЙ СБОР — ЭТО РЕСУРСЫ, КОТОРЫЕ ВОЗВРАЩАЮТСЯ.","СОБЕРИ И ЗАКРЕПИ КОНТЕЙНЕР ВО ДВОРЕ.","ОТМЕТЬ ТОЧКУ НА КАРТЕ И ПРИШЛИ ФОТО."]},
-  {id:'green', ic:'q_plant.png', t:'ОЗЕЛЕНИТЬ ДВОР', xp:60, karma:20, dist:210, badge:'bd_garden.png',
-   tools:['t_trowel.png|ЛОПАТКА|вскопать, посадить','t_bucket.png|ВЕДРО|полить'],
-   steps:["ДЕРЕВЬЯ ДАЮТ ТЕНЬ, ЧИСТЫЙ ВОЗДУХ И ЕДУ.","ВКОПАЙ САЖЕНЕЦ, ПОЛИВАЙ ИЗ ВЕДРА.","ФОТО ДО И ПОСЛЕ — И ДВОР ОЖИЛ."]},
-  {id:'lamp', ic:'q_lamp.png', t:'ПРОВЕРИТЬ ОСВЕЩЕНИЕ', xp:40, karma:12, dist:150, badge:'bd_energy.png',
-   tools:['t_flash.png|ФОНАРЬ|осветить','t_screwdriver.png|ОТВЁРТКА|закрутить'],
-   steps:["ТЁМНЫЙ ДВОР — ОПАСНЫЙ ДВОР. ПРОВЕРЬ ФОНАРИ.","ЗАМЕНИ ПЕРЕГОРЕВШУЮ ЛАМПУ, ЗАКРУТИ КОНТАКТЫ.","ОТМЕТЬ ОСВЕЩЁННУЮ ЗОНУ ФОТО."]},
-  {id:'leak', ic:'q_water.png', t:'УСТРАНИТЬ УТЕЧКУ ВОДЫ', xp:70, karma:22, dist:300, badge:'bd_water.png',
-   tools:['t_pliers.png|ПЛОСКОГУБЦЫ|перекрыть','t_tape.png|ИЗОЛЕНТА|обмотать'],
-   steps:["КАЖДАЯ КАПЛЯ НА СЧЁТУ. ПЕРЕКРОЙ ВОДУ ПЛОСКОГУБЦАМИ.","ОБМОТАЙ ТРУБУ ИЗОЛЕНТОЙ, ЗАКРЕПИ ХОМУТ.","ПРОВЕРЬ, ЧТО НЕ КАПАЕТ — И СНИМИ РЕЗУЛЬТАТ."]},
-];
+/* Встроенных заданий нет — район публикует их сам через админ-панель (координаты, описание, фото). */
+const QUESTS = [];
+/* «Живой» список заданий = админские из сохранёнки */
+function allQuests(){ return S_.userQuests||[]; }
+function questById(id){ return allQuests().find(q=>q.id===id); }
+/* Расстояние от игрока до точки (км) с помощью haversine */
+function distTo(lat,lng){
+  if(!S_.myPos) return null;
+  const R=6371, to=x=>x*Math.PI/180;
+  const dLat=to(lat-S_.myPos.lat), dLng=to(lng-S_.myPos.lng);
+  const a=Math.sin(dLat/2)**2+Math.cos(to(S_.myPos.lat))*Math.cos(to(lat))*Math.sin(dLng/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1000);
+}
+/* Запрос геолокации (общая ручка для карты и админки) */
+function askPos(ok,fail){
+  if(!navigator.geolocation){ if(fail)fail(); return; }
+  navigator.geolocation.getCurrentPosition(
+    p=>{ S_.myPos={lat:p.coords.latitude,lng:p.coords.longitude}; save(); if(ok)ok(S_.myPos); },
+    ()=>{ if(fail)fail(); }, {timeout:7000, enableHighAccuracy:true});
+}
 
+/* Энциклопедия автономной жизни: идеи (Фреско, Кропоткин) + практика двора */
 const WIKI = {
+  ideas:{ic:'robot.png', name:'ИДЕИ', arts:[
+    ['ЖАК ФРЕСКО · ПРОЕКТ «ВЕНЕРА»',
+     'Американский инженер и футуролог Жак Фреско (1916–2017) разработал модель ресурсо-ориентированной экономики, где все ресурсы планеты — общее достояние, а не товар. Вместо денег и бюрократии — научный учёт потребностей и автоматизация, освобождающая людей от рутины ради творчества и развития. Главные принципы: всеобщий доступ к благам, возобновляемая энергия, переустройство городов как единой умной системы, решение проблем средой, а не наказанием. Фреско подчёркивал: автоматизация при деньгах ведёт к безработице и нищете, а при ресурсо-ориентированном строе — к изобилию и свободному времени для всех.'],
+    ['ПЁТР КРОПОТКИН · ВЗАИМОПОМОЩЬ',
+     'Князь, учёный и анархист Пётр Кропоткин (1842–1921) в книге «Взаимная помощь как фактор эволюции» показал: выживают не самые агрессивные, а те виды и сообщества, что умеют объединяться. Взаимопомощь, солидарность и взаимная поддержка — такой же движитель эволюции, как и соперничество. Идеал Кропоткина — федерация самоуправляемых общин без государства: «каждому по потребностям». Крестьянская община, ремесленные цеха, соседские союзы — примеры того, как люди веками вместе строили дороги, орошали поля и защищали дворы, не дожидаясь приказа сверху.'],
+    ['РЕСУРСО-ОРИЕНТИРОВАННАЯ ЭКОНОМИКА',
+     'Модель, в которой производство и распределение строятся на данных о реальных ресурсах и потребностях, а не на деньгах и прибыли. Технологии и автоматизация служат человеку, а не прибыли: машины берут на себя опасный и монотонный труд, а люди занимаются творчеством, наукой, заботой. Ключевые идеи: бережливый замкнутый цикл (отходы снова в дело), энергия солнца, ветра и воды, открытое знание вместо патентов, город как единая система, где жильё, транспорт и питание спроектированы для всех и на века.'],
+    ['ОБЩИНА И САМОУПРАВЛЕНИЕ',
+     'Исторически соседские и деревенские общины сами решали общие дела: строили колодцы и дороги, делили воду, разбирали споры кругом соседей. Это и есть прямая демократия малого масштаба — общее собрание, взаимопомощь, решение голосованием. В «21» это воплощено в СУДЕ СООБЩЕСТВА, ОБЩЕМ КОШЕЛЬКЕ и совместных заданиях двора: люди договариваются напрямую, а не ждут чиновника.'],
+    ['КИБЕРНЕТИКА БИЕРА · НАРОДНАЯ ЭКОНОМИКА',
+     'В 1970-х в Чили британский кибернетик Стаффорд Бир построил «Киберсин» — систему реального учёта экономики без рынка и планового начальства: фабрики сообщали о ресурсах, сеть помогала распределять их по потребностям. Проект показал: данные об общих ресурсах позволяют управлять честнее и быстрее, чем деньги. Принцип «обратной связи» лежит и в «21»: AI собирает точки, голосования и кошельки района и предлагает приоритеты.'],
+    ['БАЗОВАЯ ТЕХНИКА · РЕМОНТ ВМЕСТО ПОКУПКИ',
+     'Сломалась вещь — чини. Чинить — значит не добывать ресурсы заново: один умелец с молотком, отвёрткой и изолентой закрывает 80% дворовых поломок. Делиться инструментами и чинить сообща — практика общинная, бережёт и деньги, и природу.'],
+  ]},
   water:{ic:'e_drop.png', name:'ВОДА', arts:[
-    ['ФИЛЬТР ИЗ ПЕСКА И УГЛЯ','песок → уголь → ткань: 3 слоя очищают воду за минуты'],
-    ['СБОР ДОЖДЕВОЙ ВОДЫ','бочка под жёлобом даёт 200 л за хороший дождь'],
-    ['КИПЯЧЕНИЕ И ОБЕЗЗАРАЖИВАНИЕ','10 минут кипения убивают всё опасное'],
+    ['ФИЛЬТР ИЗ ПЕСКА И УГЛЯ',
+     'Самодельный фильтр на три слоя: снизу ткань, затем толчёный активированный уголь, крупный песок и мелкий гравий сверху. Грязная вода проходит сверху вниз — уголь задерживает органику и запахи, песок отсекает муть. Фильтрованную воду для питья всё равно нужно прокипятить 10 минут или продезинфицировать. Медленная фильтрация (несколько капель в секунду) даёт лучший результат.'],
+    ['СБОР ДОЖДЕВОЙ ВОДЫ',
+     'Бочка под водосточным жёлобом за один хороший дождь набирает до 200 литров. Дождевая вода мягкая, идеальна для полива огорода, стирки и уборки. Сверх бочки — простая крышка-сетка от листьев и комаров, а отвод через кран внизу. Для питья воду собирают с чистых крыш и дополнительно фильтруют.'],
+    ['КИПЯЧЕНИЕ И ОБЕЗЗАРАЖИВАНИЕ',
+     '10 минут спокойного кипения убивают большинство бактерий и паразитов. В горах, где вода закипает при более низкой температуре, кипятят дольше. Запасной вариант без огня — таблетки обеззараживания или капля отбеливателя (пара капель на литр, отстоять 30 минут), но кипячение надёжнее и доступнее.'],
   ]},
   energy:{ic:'e_bolt.png', name:'ЭНЕРГИЯ', arts:[
-    ['СОЛНЕЧНАЯ ПАНЕЛЬ ИЗ ХЛАМА','старые диоды и аккумулятор = зарядка для телефона'],
-    ['ВЕТРЯК ВО ДВОРЕ','моторчик + лопасти из ПВХ-трубы'],
-    ['ЭКОНОМИЯ СВЕТА','светодиоды вместо ламп накаливания — в 8 раз меньше'],
+    ['СОЛНЕЧНАЯ ПАНЕЛЬ ИЗ ХЛАМА',
+     'Из старых фотоэлементов и аккумулятора собирается простая зарядка: панель преобразует свет в ток, контроллер заряжает аккумулятор, а USB-модуль отдаёт его телефону. Даже небольшой панели хватает, чтобы за день зарядить гаджет и фонарь — шаг к энергетической автономии двора.'],
+    ['ВЕТРЯК ВО ДВОРЕ',
+     'Мини-ветряк из моторчика-генератора и лопастей, вырезанных из ПВХ-трубы, даёт ток на зарядку при ветре. Важно закрепить его на мачте повыше и защитить генератор от влаги. Вместе с небольшой солнечной панелью это круглосуточный автономный источник.'],
+    ['ЭКОНОМИЯ СВЕТА И ТЕПЛА',
+     'Светодиоды потребляют в 7–8 раз меньше ламп накаливания и работают в десятки раз дольше. Утеплённые окна, шторы на ночь и тепло за шкафом у внешней стены берегут тепло. Каждый сэкономленный ватт — это панель, аккумулятор и независимость, которую не надо покупать.'],
   ]},
   food:{ic:'e_apple.png', name:'ЕДА', arts:[
-    ['ОГОРОД НА ПОДОКОННИКЕ','зелень и томаты растут даже зимой'],
-    ['КОМПОСТ ИЗ ПИЩЕВЫХ ОТХОДОВ','закрытый цикл: отходы → еда для растений'],
-    ['ЗАКУПКА ВПРОК ВМЕСТЕ','оптом дешевле: общий заказ района'],
+    ['ОГОРОД НА ПОДОКОННИКЕ',
+     'Зелень (укроп, лук, салат), редис и карликовые томаты растут в ящиках даже зимой на южном окне. Нужен дренаж, рыхлая земля и регулярный полов. Совместный огород во дворе даёт больше: общие грядки, очередь на полив и общий урожай.'],
+    ['КОМПОСТ ИЗ ПИЩЕВЫХ ОТХОДОВ',
+     'Очистки овощей и фруктов, кофейная гуща, скошенная трафа в закрытом ящике за пару месяцев превращаются в плодородную землю. Мясное, жирное и молочное в компост не кладут. Это замкнутый цикл: отходы еды → земля → новая еда.'],
+    ['ОБЩИЕ ЗАКУПКИ И ОБМЕН',
+     'Покупать оптом на весь двор дешевле и экологичнее: меньше упаковки и доставок. Книги по выживанию и инструменты тоже ходят по рукам. Общий заказ района — это и экономия, и взаимная поддержка по Кропоткину.'],
   ]},
   repair:{ic:'e_gear.png', name:'РЕМОНТ', arts:[
-    ['БАЗОВЫЙ НАБОР ИНСТРУМЕНТОВ','молоток, отвёртка, плоскогубцы, изолента закрывают 80% задач'],
-    ['ПОЧИНКА МЕБЕЛИ','доска + саморезы + клей = новая жизнь скамейке'],
-    ['БЕЗОПАСНАЯ ПРОВОДКА','изолента, отсутствие скруток, автомат в щитке'],
+    ['БАЗОВЫЙ НАБОР ИНСТРУМЕНТОВ',
+     'Молоток, отвёртки (крестовая и прямая), плоскогубцы, изолента и нож закрывают около 80% бытовых поломок: расшатавшаяся скамейка, оторванная ручка, перетёртый провод. Общий ящик инструментов на двор дешевле, чем личный у каждого.'],
+    ['ПОЧИНКА МЕБЕЛИ И ДВОРА',
+     'Доска вместо подгнившей планки, саморезы вместо гвоздей, клей под распор — и скамейка служит ещё годы. Правило: сначала зачистить и укрепить основание, потом ставить декор. Чиним сообща — и работа быстрее, и навыки передаются.'],
+    ['БЕЗОПАСНАЯ ПРОВОДКА',
+     'Никаких «скруток на весу»: контакты — в клеммах или пайке, изоляция без трещин, автомат в щитке под нагрузку. Самодельные удлинители и перегруз — главная причина пожаров. Не уверен в проводке — зови соседа-электрика, а не испытывай удачу.'],
   ]},
   law:{ic:'e_scales.png', name:'ПРАВО', arts:[
-    ['СУД СОСЕДЕЙ','спор решает голосование, а не чиновник'],
-    ['ОБЩЕЕ СОБРАНИЕ МКД','2/3 голосов решают судьбу двора'],
-    ['ВАШИ ПРАВА НА БЛАГОУСТРОЙСТВО','житель вправе требовать ремонта и озеленения'],
+    ['СУД СОСЕДЕЙ И ОБЩЕЕ СОБРАНИЕ',
+     'Спор внутри двора быстрее и честнее решают сами соседи голосованием, а не чиновник через полгода. Общее собрание собственников жилья — уже законный механизм: большинство в 2/3 принимает решения по двору, благоустройству и общим деньгам.'],
+    ['ПРАВО НА БЛАГОУСТРОЙСТВО',
+     'Житель вправе требовать ремонта, освещения и озеленения двора: земля под домом и двор — общее имущество собственников. Коллективное обращение с подписями работает в разы сильнее одного письма.'],
+    ['РАЗДЕЛЬНЫЙ СБОР И РЕСУРСЫ',
+     'Разделённый мусор — это вторичное сырьё: металл, стекло, пластик и бумага возвращаются в производство. Общий контейнер во дворе экономит вывозы и возвращает ресурсы в оборот — практический шаг к замкнутому циклу ресурсо-ориентированной модели.'],
+  ]},
+  green:{ic:'q_plant.png', name:'ЗЕМЛЯ', arts:[
+    ['ОЗЕЛЕНЕНИЕ ДВОРА',
+     'Деревья дают тень, чистый воздух, снижают жару летом и держат почву. Сажают в ямы с дренажем, поливают первый год регулярно, выбирают местные породы. Один большой взрослый куст приживается хуже молодого саженца.'],
+    ['ЛАНДШАФТ И ВОДА НА УЧАСТКЕ',
+     'Дождевые канавки и мульча удерживают влагу, дождевой сад в низине собирает ливни, а не топит двор. Мульча из скошенной травы сокращает полив вдвое — земля под ней не пересыхает.'],
   ]},
 };
 
@@ -826,10 +1069,47 @@ const HATS = ['hat_cap.png','hat_helmet.png','hat_beanie.png','hat_crown.png'];
 const ACCS = ['acc_glasses.png','acc_scarf.png','acc_mask.png','acc_phones.png'];
 const ICON_POOL = ['q_bench.png','q_recycle.png','q_plant.png','q_lamp.png','q_water.png','e_house.png','e_shield.png'];
 
+/* Артефакты инвентаря — выдаются ТОЛЬКО за выполненные задания */
+const ARTIFACTS = [
+  {id:'ar_backpack', f:'ar_backpack.png',  n:'РЮКЗАК ПОМОЩНИКА',   q:'ПЕРВОЕ ЗАДАНИЕ',       en:'HELPER’S BACKPACK',  eq:'FIRST QUEST'},
+  {id:'ar_medkit',   f:'ar_medkit.png',    n:'АПТЕЧКА СОСЕДА',     q:'ПОМОЩЬ РЯДОМ',         en:'NEIGHBOUR’S AID KIT',eq:'HELP NEARBY'},
+  {id:'ar_console',  f:'ar_console.png',   n:'ТЕТРИС СО ДВОРА',    q:'ИГРА ВСЕМ ДВОРОМ',     en:'YARD TETRIS',        eq:'PLAY TOGETHER'},
+  {id:'ar_glasses',  f:'ar_glasses.png',   n:'ОЧКИ ВИДЕТЬ ВАЖНОЕ', q:'ВЗГЛЯД НА РАЙОН',      en:'SEE-WHAT-MATTERS GLASSES', eq:'EYE ON THE DISTRICT'},
+  {id:'ar_bunny',    f:'ar_bunny.png',     n:'ЗАЯЦ-УТЕШИТЕЛЬ',     q:'ДОБРО ДЕТЯМ',          en:'COMFORT BUNNY',      eq:'KINDNESS TO KIDS'},
+  {id:'ar_notebook', f:'ar_notebook.png',  n:'БЛОКНОТ КОТА',       q:'ИДЕИ РАЙОНА',          en:'CAT NOTEBOOK',       eq:'DISTRICT IDEAS'},
+  {id:'ar_pencil',   f:'ar_pencil.png',    n:'КАРАНДАШ МАСТЕРА',   q:'ЧИНИМ СВОИМИ РУКАМИ',  en:'MAKER’S PENCIL',     eq:'FIX WITH OUR HANDS'},
+  {id:'ar_case',     f:'ar_case.png',      n:'ПЕНАЛ С СЕРДЦЕМ',    q:'ШКОЛЬНЫЙ СБОР',        en:'HEART PENCIL CASE',  eq:'SCHOOL DRIVE'},
+  {id:'ar_phone',    f:'ar_phone.png',     n:'ТЕЛЕФОН С ЧАРМАМИ',  q:'ГОЛОС РАЙОНА',         en:'CHARMED PHONE',      eq:'VOICE OF THE DISTRICT'},
+  {id:'ar_necklace', f:'ar_necklace.png',  n:'ЖЕТОН 21',           q:'ВОЛОНТЁР 21',          en:'21 DOG TAG',         eq:'21 VOLUNTEER'},
+  /* ── ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ: выдаются по секретному коду ── */
+  {id:'ex_axe',        f:'ex_axe.png',        n:'ТОПОР ВЫЖИВАЛЬЩИКА', q:'ЭКСКЛЮЗИВ · КОД', en:'SURVIVAL AXE',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_binoculars', f:'ex_binoculars.png', n:'БИНОКЛЬ РАЗВЕДКИ',   q:'ЭКСКЛЮЗИВ · КОД', en:'SCOUT BINOCULARS', eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_gloves',     f:'ex_gloves.png',     n:'ПЕРЧАТКИ РАБОТ',     q:'ЭКСКЛЮЗИВ · КОД', en:'WORK GLOVES',      eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_boots',      f:'ex_boots.png',      n:'БОТИНКИ ПУТНИКА',    q:'ЭКСКЛЮЗИВ · КОД', en:'WAYFARER BOOTS',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_fuel',       f:'ex_fuel.png',       n:'КАНИСТРА ТОПЛИВА',   q:'ЭКСКЛЮЗИВ · КОД', en:'FUEL CAN',         eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_tape',       f:'ex_tape.png',       n:'МОТОК СКОТЧА',       q:'ЭКСКЛЮЗИВ · КОД', en:'DUCT TAPE ROLL',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_walkie',     f:'ex_walkie.png',     n:'РАЦИЯ РАЙОНА',       q:'ЭКСКЛЮЗИВ · КОД', en:'DISTRICT RADIO',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_stanley',    f:'ex_stanley.png',    n:'ФЛЯГА STANLEY',      q:'ЭКСКЛЮЗИВ · КОД', en:'STANLEY BOTTLE',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_flashlight', f:'ex_flashlight.png', n:'ФОНАРЬ НОЧНОЙ',      q:'ЭКСКЛЮЗИВ · КОД', en:'NIGHT FLASHLIGHT', eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_pack',       f:'ex_pack.png',       n:'РЮКЗАК ПОХОДА',      q:'ЭКСКЛЮЗИВ · КОД', en:'TREK PACK',        eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_aidkit',     f:'ex_aidkit.png',     n:'АПТЕЧКА-ПОХОДНАЯ',   q:'ЭКСКЛЮЗИВ · КОД', en:'FIELD MEDKIT',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_bandana',    f:'ex_bandana.png',    n:'БАНДАНА 21',         q:'ЭКСКЛЮЗИВ · КОД', en:'21 BANDANA',       eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_battery',    f:'ex_battery.png',    n:'ЗАПАС БАТАРЕЕК',     q:'ЭКСКЛЮЗИВ · КОД', en:'BATTERY PACK',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_pot',        f:'ex_pot.png',        n:'КОТЕЛОК ПОХОДА',     q:'ЭКСКЛЮЗИВ · КОД', en:'CAMP POT',         eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_plants',     f:'ex_plants.png',     n:'СЕМЕНА ОГОРОДА',     q:'ЭКСКЛЮЗИВ · КОД', en:'GARDEN SEEDS',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_can',        f:'ex_can.png',        n:'НЗ ТУШЁНКИ',         q:'ЭКСКЛЮЗИВ · КОД', en:'STEW RATION',      eq:'EXCLUSIVE · CODE', excl:true},
+];
+
 const DEFAULT_PROJECTS = [
+  {ic:'cf_gazel.png', t:'ТО ГАЗЕЛИ ФАРИДА · МАРШРУТКА РАЙОНА', have:42000, goal:120000, days:9, by:'ВОДИТЕЛЬ ФАРИД'},
   {ic:'cf_slide.png', t:'ДЕТСКАЯ ПЛОЩАДКА ВО ДВОРЕ', have:750000, goal:1200000, days:12},
   {ic:'cf_trees.png', t:'ОЗЕЛЕНЕНИЕ АЛЛЕИ У ДОМА', have:310000, goal:500000, days:8},
-  {ic:'q_bench.png', t:'НОВЫЕ ЛАВКИ И УРНЫ', have:125000, goal:250000, days:5},
+];
+/* Стартовое задание района (появляется у всех при первом запуске) */
+const SEED_QUESTS = [
+  {id:'seed_stairs', ic:'q_bench.png', t:'СЛОМАНА ЛЕСТНИЦА У ПОДЪЕЗДА 2',
+   desc:'УЛ. ДРУЖБЫ, ДОМ ПО ДВОРА, ПОДЪЕЗД 2. СЛОМАНА ЛЕСТНИЦА НА ПОДЪЕЗДЕ: РАЗБИТЫ СТУПЕНИ, ПОДНИМАТЬСЯ ОПАСНО, ОСОБЕННО ПОЖИЛЫМ И С КОЛЯСКАМИ. НУЖНО ОГОРОДИТЬ ОПАСНЫЙ УЧАСТОК И ПОЧИНИТЬ СТУПЕНИ.',
+   lat:48.7928, lng:44.7591, xp:60, karma:15, badge:'bd_repair.png', art:'ar_backpack', photo:null},
 ];
 const DEFAULT_DISPUTES = [
   {t:'ШУМНЫЕ СОСЕДИ ПО НОЧАМ', yes:24, no:3},
@@ -846,23 +1126,31 @@ const PETS = [
 
 /* AI-специалисты района (каждый ведёт свою тему знаний) */
 const AGENTS = [
+  {ic:'robot.png',    n:'ФИЛОСОФ 21',   d:'идеи автономии', cat:'ideas',  ask:'КТО ТАКОЙ ЖАК ФРЕСКО?'},
   {ic:'e_drop.png',   n:'ГИДРОЛОГ',     d:'вода',       cat:'water',  ask:'КАК ОЧИСТИТЬ ВОДУ?'},
   {ic:'e_bolt.png',   n:'ЭНЕРГЕТИК',    d:'энергия',    cat:'energy', ask:'КАК ЭКОНОМИТЬ ЭНЕРГИЮ?'},
   {ic:'e_apple.png',  n:'АГРОНОМ',      d:'еда',        cat:'food',   ask:'КАК ВЫРАСТИТЬ ЕДУ?'},
   {ic:'e_gear.png',   n:'ИНЖЕНЕР',      d:'ремонт',     cat:'repair', ask:'КАК ПОЧИНИТЬ ВО ДВОРЕ?'},
   {ic:'e_scales.png', n:'ЮРИСТ',        d:'право',      cat:'law',    ask:'КАК РЕШИТЬ СПОР?'},
-  {ic:'q_plant.png',  n:'ЛАНДШАФТ',     d:'озеленение', cat:'green',  ask:'КАК ОЗЕЛЕНИТЬ ДВОР?'},
 ];
 
 /* ═══════════════════ СОСТОЯНИЕ ═══════════════════ */
 let S_ = {};
 function load(){
   try{ S_ = JSON.parse(localStorage.getItem('app21')) || {}; }catch(e){ S_ = {}; }
-  S_ = Object.assign({xp:0, karma:2430, coins:0, quests:{}, points:[], posts:[], disputes:DEFAULT_DISPUTES.map(d=>({...d})),
+  S_ = Object.assign({xp:0, karma:2430, coins:0, quests:{}, points:[], posts:[], userQuests:[], myPos:null, disputes:DEFAULT_DISPUTES.map(d=>({...d})),
     projects:DEFAULT_PROJECTS.map(p=>({...p})), wallet:0, badges:[], hat:null, acc:null, dark:false,
-    articles:[], acts:Array.from({length:7},()=>3+Math.floor(Math.random()*14)), greeted:false, voted:{}, funded:{}}, S_);
+    articles:[], acts:Array.from({length:7},()=>3+Math.floor(Math.random()*14)), greeted:false, voted:{}, funded:{},
+    seeded:false, forumPosts:[], tgUser:null, inventory:{}, lang:'ru', rewards:[], unlocked:[]}, S_);
+  /* первичный сид: стартовое задание района */
+  if(!S_.seeded){
+    S_.seeded=true;
+    SEED_QUESTS.forEach(q=>{ if(!S_.userQuests.some(u=>u.id===q.id)) S_.userQuests.push({...q}); });
+    save();
+  }
 }
-function save(){ localStorage.setItem('app21', JSON.stringify(S_)); }
+function save(){ try{ localStorage.setItem('app21', JSON.stringify(S_)); }
+  catch(e){ toast('ПАМЯТЬ ПЕРЕПОЛНЕНА — ФОТО СЛИШКОМ БОЛЬШОЕ'); } }
 
 const lvlOf = xp => { let l=1, x=xp; while(x>=xpNeed(l) && l<25){ x-=xpNeed(l); l++; } return l; };
 const lvlInfo = xp => { const l=lvlOf(xp); let x=xp; for(let i=1;i<l;i++) x-=xpNeed(i); return {l, into:x, need:l<25?xpNeed(l):xpNeed(25), name:LEVELS[l-1]}; };
@@ -881,7 +1169,7 @@ function go(t){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
   document.getElementById('main').scrollTop=0;
   const titles={home:'21',map:'КАРТА',quests:'КВЕСТЫ',wiki:'ЭНЦИКЛОПЕДИЯ',profile:'ПРОФИЛЬ'};
-  document.getElementById('hTitle').textContent=titles[t];
+  document.getElementById('hTitle').textContent=tr(titles[t]);
   if(t==='map') initMap();
   if(t==='wiki') renderWiki();
 }
@@ -903,7 +1191,7 @@ function renderStats(){
   document.getElementById('pfLvl').textContent=li.l;
   document.getElementById('pfBar').style.width=(li.into/li.need*100)+'%';
   document.getElementById('pfXpTxt').textContent=li.into+'/'+li.need;
-  const active=QUESTS.filter(q=>S_.quests[q.id]==='mine').length;
+  const active=allQuests().filter(q=>S_.quests[q.id]==='mine').length;
   document.getElementById('activeCount').textContent=active;
   // гардероб
   ['hatLayer','hatLayer2'].forEach(id=>{ const e=document.getElementById(id); e.style.opacity=S_.hat?1:0; if(S_.hat)e.src=A(S_.hat); });
@@ -926,7 +1214,7 @@ function openBadges(){ renderBadges(); openModal('badgeModal'); }
 function renderDistrict(){
   const done=Object.values(S_.quests).filter(s=>s==='done').length;
   const probs=S_.points.filter(p=>p.type==='problem').length;
-  const data=[['q_bench.png',done,'КВЕСТЫ'],['mk_problem.png',probs,'ПРОБЛЕМЫ'],['ui_coin.png',S_.wallet,'ОБЩАК'],['face.png',42+done*3,'СОСЕДИ']];
+  const data=[['q_bench.png',done,'КВЕСТЫ'],['mk_problem.png',probs,'ПРОБЛЕМЫ'],['ui_coin.png',S_.wallet,'БЮДЖЕТ'],['face.png',42+done*3,'СОСЕДИ']];
   document.getElementById('districtStats').innerHTML=data.map(([f,v,n])=>`<div><img class="ic pix" src="${A(f)}"><b>${v}</b><span>${n}</span></div>`).join('');
 }
 
@@ -944,14 +1232,22 @@ function renderPets(){
       <div class="open" style="font-size:11px;font-weight:700;border-radius:999px;padding:8px 14px;background:var(--ink);color:#f4f0e7">ПОМОЧЬ</div>
     </div>`).join('');
 }
-function petHelp(i){ const p=PETS[i]; if(p.q){ openQuest(p.q); toast('КВЕСТ ЗАБОТЫ ОТКРЫТ ✦'); } else toast('СОСЕДИ УЖЕ В КУРСЕ ✦'); }
+function petHelp(i){ const p=PETS[i];
+  if(p.q && questById(p.q)){ openQuest(p.q); toast('КВЕСТ ЗАБОТЫ ОТКРЫТ ✦'); }
+  else toast('СОСЕДИ УЖЕ В КУРСЕ · СКОРО ПОЯВИТСЯ ЗАДАНИЕ ✦'); }
 
 /* ═══════════════════ КВЕСТЫ ═══════════════════ */
 let qFilter_='all';
 function qFilter(f,btn){ qFilter_=f; document.querySelectorAll('#s-quests .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on'); renderQuests(); }
 function renderQuests(){
   const el=document.getElementById('questList');
-  el.innerHTML=QUESTS.filter(q=>{
+  const list=allQuests();
+  if(!list.length){
+    el.innerHTML=`<div class="empty-note"><img class="pix" src="${A('nav_sword.png')}">
+      ЗАДАНИЙ ПОКА НЕТ.<br>РАЙОН ПУБЛИКУЕТ ИХ В АДМИН-ПАНЕЛИ:<br>КООРДИНАТЫ · ОПИСАНИЕ · ФОТО</div>`;
+    return;
+  }
+  el.innerHTML=list.filter(q=>{
     const st=S_.quests[q.id]||'open';
     if(qFilter_==='open')return st==='open';
     if(qFilter_==='mine')return st==='mine';
@@ -959,18 +1255,20 @@ function renderQuests(){
     return true;
   }).map(q=>{
     const st=S_.quests[q.id]||'open';
+    const dm=distTo(q.lat,q.lng); const distTxt=dm!=null?dm+' М':'— М';
     return `<div class="item ${st==='done'?'done':''}" onclick="openQuest('${q.id}')">
-      <div class="ic"><img class="pix" src="${A(q.ic)}"></div>
+      <div class="ic"><img class="pix" src="${q.photo? q.photo : A(q.ic)}"></div>
       <div class="body"><div class="t">${q.t}</div>
-        <div class="meta"><span class="g">⚡ +${q.xp} XP</span><span class="g">◉ +${q.karma}</span><span>📍 ${q.dist} М</span></div></div>
+        ${q.photo?`<div class="tiny" style="margin:2px 0;color:var(--ink-3)">${(q.desc||'').toUpperCase()}</div>`:''}
+        <div class="meta"><span class="g">⚡ +${q.xp} XP</span><span class="g">◉ +${q.karma}</span><span>📍 ${distTxt}</span></div></div>
       <div class="open">${st==='done'?'✓':st==='mine'?'В ИГРЕ':'ОТКРЫТЬ'}</div></div>`;
   }).join('');
 }
 let curQ=null, curStep=0, toolsDone=0, photoDone=false;
 function openQuest(id){
-  curQ=QUESTS.find(q=>q.id===id); curStep=0; toolsDone=0; photoDone=false;
+  curQ=questById(id); if(!curQ){ toast('ЗАДАНИЕ НЕ НАЙДЕНО'); return; } curStep=0; toolsDone=0; photoDone=false;
   if(!S_.quests[id]) S_.quests[id]='mine'; save(); renderQuests(); renderStats();
-  document.getElementById('qTitle').innerHTML=`<img class="pix" src="${A(curQ.ic)}" style="width:24px">${curQ.t}`;
+  document.getElementById('qTitle').innerHTML=`<img class="pix" src="${curQ.photo?curQ.photo:A(curQ.ic)}" style="width:24px;image-rendering:pixelated">${curQ.t}`;
   document.getElementById('qReward').textContent='⚡+'+curQ.xp+' ◉+'+curQ.karma;
   document.getElementById('qTools').innerHTML='';
   document.getElementById('qAttach').style.display='none';
@@ -979,25 +1277,33 @@ function openQuest(id){
   openModal('questModal');
 }
 function questStep(){
-  const total=4;
+  const total=curQ.tools?4:3;
   document.getElementById('qStepBar').firstElementChild.style.width=((curStep+1)/total*100)+'%';
-  document.getElementById('qStepTxt').textContent='ШАГ '+(curStep+1)+' ИЗ '+total;
+  document.getElementById('qStepTxt').textContent=(S_.lang==='en'?'STEP ':'ШАГ ')+(curStep+1)+(S_.lang==='en'?' OF ':' ИЗ ')+total;
   const chat=document.getElementById('qChat');
-  if(curStep===0){
-    chat.innerHTML=`<div class="msg"><div class="av"><img class="pix" src="${A('worker.png')}"></div><div class="bubble2">${curQ.steps[0]}</div></div>`;
+  const qAvatar=cur=>curQ.photo?`<img class="pix" src="${curQ.photo}" style="image-rendering:pixelated">`:`<img class="pix" src="${A('worker.png')}">`;
+  if(curStep===0 && curQ.tools){
+    chat.innerHTML=`<div class="msg"><div class="av">${qAvatar()}</div><div class="bubble2">${curQ.steps[0]}</div></div>`;
     document.getElementById('qTools').innerHTML=curQ.tools.map((t,i)=>{
       const [f,nm,ds]=t.split('|');
       return `<div class="tool" id="tool${i}" onclick="takeTool(${i})"><img class="pix" src="${A(f)}"><div><div class="nm">${nm}</div><div class="ds">${ds}</div></div><div class="ck">✓</div></div>`;
     }).join('');
-    document.getElementById('qNext').textContent='ИНСТРУМЕНТЫ ГОТОВЫ ▶';
-  } else if(curStep===1){
-    addMsg('worker',curQ.steps[1]);
+    document.getElementById('qNext').textContent=tr('ИНСТРУМЕНТЫ ГОТОВЫ ▶');
+  } else if((curStep===0 && !curQ.tools) || (curStep===1 && curQ.tools)){
+    // брифинг задания: описание + координаты + фото
+    const dm=distTo(curQ.lat,curQ.lng);
+    const photoLine=curQ.photo?`<div style="margin:8px 0"><img class="pix" src="${curQ.photo}" style="width:100%;image-rendering:pixelated;border:var(--bw) solid var(--ink)"></div>`:'';
+    chat.innerHTML=`<div class="msg"><div class="av">${qAvatar()}</div><div class="bubble2">
+      ${curQ.desc||'ЗАДАНИЕ ОТ РАЙОНА.'}
+      ${photoLine}
+      <div class="tiny" style="color:var(--ink-3);margin-top:6px">📍 ${curQ.lat.toFixed(5)}, ${curQ.lng.toFixed(5)}${dm!=null?` · ${dm} М ОТ ТЕБЯ`:''}</div>
+    </div></div>`;
     document.getElementById('qTools').innerHTML='';
-    document.getElementById('qNext').textContent='СДЕЛАЛ ▶';
-  } else if(curStep===2){
-    addMsg('worker',curQ.steps[2]);
+    document.getElementById('qNext').textContent=(curQ.tools?tr('СДЕЛАЛ ▶'):tr('БЕРУСЬ ЗА ДЕЛО ▶'));
+  } else if(curStep===(curQ.tools?2:1)){
+    addMsg('worker','ГОТОВО? ПРИШЛИ ФОТО РЕЗУЛЬТАТА ИЛИ ЗАПИШИ ГОЛОСОМ — И ЗАДАНИЕ ЗАЧТЕНО.');
     document.getElementById('qAttach').style.display='flex';
-    document.getElementById('qNext').textContent='ЗАВЕРШИТЬ КВЕСТ ✓';
+    document.getElementById('qNext').textContent=tr('ЗАВЕРШИТЬ ЗАДАНИЕ ✓');
   } else {
     finishQuest();
   }
@@ -1018,21 +1324,23 @@ function takeTool(i){
 }
 function qPhoto(){ photoDone=true; addMsg('me','📷 ФОТО ДОБАВЛЕНО'); toast('ФОТО ПРИКРЕПЛЕНО ⚡'); }
 function questNext(){
-  if(curStep===0 && toolsDone<curQ.tools.length){ toast('НАЖМИ НА КАЖДЫЙ ИНСТРУМЕНТ'); return; }
-  if(curStep===2 && !photoDone){ toast('НУЖНЫ ФОТО ИЛИ ГОЛОСОВОЕ ПОДТВЕРЖДЕНИЕ'); return; }
+  if(curStep===0 && curQ.tools && toolsDone<curQ.tools.length){ toast('НАЖМИ НА КАЖДЫЙ ИНСТРУМЕНТ'); return; }
+  if(curStep===(curQ.tools?2:1) && !photoDone){ toast('НУЖНЫ ФОТО ИЛИ ГОЛОСОВОЕ ПОДТВЕРЖДЕНИЕ'); return; }
   curStep++; questStep();
 }
 function finishQuest(){
   S_.quests[curQ.id]='done';
   S_.xp+=curQ.xp; S_.karma+=curQ.karma; S_.coins+=Math.floor(curQ.xp/10);
   if(!S_.badges.includes(curQ.badge)) S_.badges.push(curQ.badge);
+  /* награда-артефакт: заданный в задании или следующий по каталогу */
+  const earned = grantArtifact(curQ);
   S_.acts[Math.min(6,S_.acts.length-1)]++;
-  save(); renderStats(); renderQuests();
+  save(); renderStats(); renderQuests(); bumpCoins();
   const chat=document.getElementById('qChat');
   chat.insertAdjacentHTML('beforeend',`<div class="msg"><div class="av"><img class="pix" src="${A('worker.png')}"></div>
-    <div class="bubble2">ИДЕАЛЬНО! +${curQ.xp} XP, +${curQ.karma} КАРМЫ.<br>ТЫ СДЕЛАЛ ГОРОД ЛУЧШЕ ✦</div></div>`);
+    <div class="bubble2">ИДЕАЛЬНО! +${curQ.xp} XP, +${curQ.karma} КАРМЫ.<br>${earned?`АРТЕФАКТ В ИНВЕНТАРЕ: ${earned.n} 🎒<br>`:''}ТЫ СДЕЛАЛ ГОРОД ЛУЧШЕ ✦</div></div>`);
   document.getElementById('qAttach').style.display='none';
-  document.getElementById('qNext').textContent='ЗАБРАТЬ НАГРАДУ';
+  document.getElementById('qNext').textContent=tr('ЗАБРАТЬ НАГРАДУ');
   document.getElementById('qNext').onclick=()=>{ closeModal('questModal'); document.getElementById('qNext').onclick=questNext; toast('НАГРАДА ПОЛУЧЕНА ⚡✦'); renderStats(); };
 }
 // микрофон-заглушка
@@ -1057,41 +1365,55 @@ function renderFeed(){
 
 /* ═══════════════════ КАРТА (Яндекс + фоллбэк) ═══════════════════ */
 let mapInst=null, mapReady=false;
+let mapTries=0;
 function initMap(){
   renderMapPoints();
-  if(mapReady) return;
-  if(window.ymaps){ try{ ymaps.ready(()=>ymapInit()); }catch(e){} }
-  // если за 4 сек не загрузилась — фоллбэк
-  setTimeout(()=>{ if(!mapReady) document.getElementById('mapFallback').style.display='block'; }, 4000);
+  if(mapReady){ syncYmarks(); return; }
+  if(window.ymaps && ymaps.Map){
+    try{ ymaps.ready(ymapInit); }catch(e){ showMapFallback(); }
+  } else if(mapTries++ < 6){
+    // скрипт Яндекс-карт ещё грузится — ждём и пробуем снова
+    setTimeout(initMap, 900);
+  } else showMapFallback();
 }
+function showMapFallback(){ const f=document.getElementById('mapFallback'); if(f) f.style.display='block'; }
 function ymapInit(){
   try{
-    mapInst = new ymaps.Map('ymap',{ center:[55.751244,37.618423], zoom:15, controls:['zoomControl','geolocationControl'] });
-    const pane=mapInst.panes.get('ground').getElement();
-    const f=document.createElement('div'); f.style.cssText='position:absolute;inset:0;filter:grayscale(1) contrast(1.1);pointer-events:none';
-    pane.parentNode.appendChild(f);
-    mapReady=true; document.getElementById('mapFallback').style.display='none';
+    const center = S_.myPos?[S_.myPos.lat,S_.myPos.lng]:[48.7956,44.7537]; // Волжский по умолчанию
+    mapInst = new ymaps.Map('ymap',{ center, zoom:15, controls:['zoomControl','geolocationControl'] });
+    mapReady=true;
+    document.getElementById('mapFallback').style.display='none';
+    document.getElementById('mapMarkers').style.display='none';
     syncYmarks();
-  }catch(e){ document.getElementById('mapFallback').style.display='block'; }
+    // центрируемся на игроке, как только придёт геолокация
+    if(!S_.myPos) askPos(()=>{ try{ mapInst.setCenter([S_.myPos.lat,S_.myPos.lng]); syncYmarks(); }catch(e){} });
+  }catch(e){ showMapFallback(); }
 }
 function mapZoom(d){ if(mapInst){ mapInst.setZoom(mapInst.getZoom()+d); } }
 const MARK_IC={problem:'mk_problem.png',quest:'mk_quest.png',project:'mk_project.png',done:'mk_done.png'};
-function defaultPoints(){ return [
-  {lat:55.753,lng:37.616,type:'problem',t:'ЯМА НА ДОРОГЕ'},
-  {lat:55.750,lng:37.620,type:'quest',t:'ПОЧИНИТЬ СКАМЕЙКУ'},
-  {lat:55.752,lng:37.622,type:'project',t:'ПЛОЩАДКА'},
-  {lat:55.749,lng:37.615,type:'done',t:'ЛАМПА ЗАМЕНЕНА'},
-];}
-function allPoints(){ return S_.points.length?S_.points:defaultPoints(); }
+/* Точки = админские проблемы + задания (квесты) */
+function allPoints(){
+  const pts=S_.points.slice();
+  allQuests().forEach(q=>{ if(q.lat!=null&&q.lng!=null) pts.push({lat:q.lat,lng:q.lng,type:'quest',t:q.t,quest:q.id,photo:q.photo,ic:q.ic}); });
+  return pts;
+}
+function pointTap(p){
+  if(p.quest){ openQuest(p.quest); } else { toast(p.t); }
+}
 function renderMapPoints(){
   const wrap=document.getElementById('mapMarkers'); wrap.innerHTML='';
-  document.getElementById('mapPointList').innerHTML='';
-  allPoints().forEach((p,i)=>{
-    // маркер на фоллбэке — детерминированная позиция
-    const x=15+((p.lng*1000)%70), y=15+((p.lat*1000)%65);
-    wrap.insertAdjacentHTML('beforeend',`<div class="marker pulse" style="left:${x}%;top:${y}%" onclick="toast('${p.t}')"><img class="pix" src="${A(MARK_IC[p.type])}"></div>`);
-    document.getElementById('mapPointList').insertAdjacentHTML('beforeend',
-      `<div class="item" onclick="toast('${p.t}')"><div class="ic"><img class="pix" src="${A(MARK_IC[p.type])}"></div><div class="body"><div class="t">${p.t}</div><div class="meta"><span>● ◉ ◆</span><span>${Math.round(80+((p.lat*p.lng*10000)%300))} М</span></div></div></div>`);
+  const list=document.getElementById('mapPointList');
+  const pts=allPoints();
+  list.innerHTML = pts.length? '' : `<div class="empty-note"><img class="pix" src="${A('mk_quest.png')}">ТОЧЕК ПОКА НЕТ.<br>ДОБАВЬТЕ ЗАДАНИЕ ИЛИ ПРОБЛЕМУ В АДМИН-ПАНЕЛИ.</div>`;
+  pts.forEach((p,i)=>{
+    const x=14+((p.lng*1000)%72), y=14+((p.lat*1000)%64);
+    const icSrc = p.photo? p.photo : A(MARK_IC[p.type]||'mk_problem.png');
+    wrap.insertAdjacentHTML('beforeend',`<div class="marker pulse" style="left:${x}%;top:${y}%" onclick='pointTap(${JSON.stringify(p).replace(/'/g,"&apos;")})'><img class="pix" src="${icSrc}"></div>`);
+    const dm=distTo(p.lat,p.lng);
+    const distTxt=dm!=null?dm+' М':'НЕТ GPS';
+    const label=p.quest?'ЗАДАНИЕ':'ТОЧКА';
+    list.insertAdjacentHTML('beforeend',
+      `<div class="item" onclick='pointTap(${JSON.stringify(p).replace(/'/g,"&apos;")})'><div class="ic"><img class="pix" src="${icSrc}"></div><div class="body"><div class="t">${p.t}</div><div class="meta"><span>${label}</span><span>📍 ${distTxt}</span></div></div><div class="open">${p.quest?'ВЗЯТЬ':'▸'}</div></div>`);
   });
 }
 function syncYmarks(){
@@ -1099,25 +1421,22 @@ function syncYmarks(){
   mapInst.geoObjects.removeAll();
   allPoints().forEach(p=>{
     const m=new ymaps.Placemark([p.lat,p.lng],{hintContent:p.t},{
-      iconLayout:'default#image', iconImageHref:A(MARK_IC[p.type]), iconImageSize:[34,44], iconImageOffset:[-17,-44]});
+      iconLayout:'default#image',
+      iconImageHref:(p.photo? p.photo : A(MARK_IC[p.type]||'mk_problem.png')),
+      iconImageSize:[34,44], iconImageOffset:[-17,-44]});
+    m.events.add('click',()=>pointTap(p));
     mapInst.geoObjects.add(m);
   });
 }
 function addMapPoint(){
-  const place=(lat,lng)=>{
-    const types=['problem','quest','project'];
-    S_.points.push({lat,lng,type:types[Math.floor(Math.random()*3)],t:'НОВАЯ ТОЧКА '+(S_.points.length+1)});
-    save(); renderMapPoints(); syncYmarks(); toast('ТОЧКА ДОБАВЛЕНА НА КАРТУ ◆');
-  };
-  if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(
-    pos=>place(pos.coords.latitude,pos.coords.longitude),
-    ()=>{ place(55.75+Math.random()*.01, 37.61+Math.random()*.01); toast('ГЕОЛОКАЦИЯ НЕДОСТУПНА — ТОЧКА ПОБЛИЗОСТИ'); },
-    {timeout:5000}); }
-  else place(55.75+Math.random()*.01, 37.61+Math.random()*.01);
+  askPos((pos)=>{
+    S_.points.push({lat:pos.lat,lng:pos.lng,type:'problem',t:'НОВАЯ ОТМЕТКА '+(S_.points.length+1)});
+    save(); renderMapPoints(); syncYmarks(); renderDistrict(); toast('ОТМЕТКА НА ТВОЁМ МЕСТЕ ◆');
+  },()=>toast('ГЕОЛОКАЦИЯ НЕДОСТУПНА — РАЗРЕШИ GPS'));
 }
 
 /* ═══════════════════ ЭНЦИКЛОПЕДИЯ / АГЕНТЫ ═══════════════════ */
-let wikiCat='water';
+let wikiCat='ideas';
 function renderAgents(){
   const el=document.getElementById('agentGrid'); if(!el) return;
   el.innerHTML=AGENTS.map((a,i)=>`
@@ -1129,18 +1448,84 @@ function renderAgents(){
 function askAgent(i){ const a=AGENTS[i]; wikiCat=a.cat; renderWiki();
   openAi();
   setTimeout(()=>{ const inp=document.getElementById('aiInput'); inp.value=a.ask; aiSend(); },300); }
+function openArt(title, body){
+  document.getElementById('artTitle').textContent=title;
+  document.getElementById('artBody').innerHTML=body;
+  openModal('artModal');
+}
 function renderWiki(){
   renderAgents();
   document.getElementById('wikiChips').innerHTML=Object.entries(WIKI).map(([k,v])=>
     `<button class="chip ${wikiCat===k?'on':''}" onclick="wikiCat='${k}';renderWiki()"><img class="pix" src="${A(v.ic)}" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">${v.name}</button>`).join('');
   const cat=WIKI[wikiCat];
   const extra=S_.articles.filter(a=>a.cat===wikiCat);
-  const arts=cat.arts.concat(extra.map(a=>[a.t,a.d]));
-  document.getElementById('wikiList').innerHTML=arts.map(([t,d])=>
-    `<div class="item" onclick="toast('СТАТЬЯ ОТКРЫТА: ${t}')"><div class="ic"><img class="pix" src="${A(cat.ic)}"></div>
-     <div class="body"><div class="t">${t}</div><div class="meta"><span>${d.toUpperCase()}</span></div></div>
-     <div class="open">▸</div></div>`).join('') +
+  const arts=cat.arts.concat(extra.map(a=>[a.t,a.d,a.body||a.d]));
+  document.getElementById('wikiList').innerHTML=arts.map(([t,d,body],i)=>{
+    const lead=(d||'').slice(0,64).toUpperCase();
+    return `<div class="item" onclick='openArt(${JSON.stringify(t)},${JSON.stringify(body||d)})'><div class="ic"><img class="pix" src="${A(cat.ic)}"></div>
+     <div class="body"><div class="t">${t}</div><div class="meta"><span>${lead}${(d||'').length>64?'…':''}</span></div></div>
+     <div class="open">ЧИТАТЬ</div></div>`;
+  }).join('') +
     `<div class="item" style="border-style:dashed" onclick="toast('ДОБАВЛЯТЬ СТАТЬИ МОЖЕТ АДМИН 🔒')"><div class="ic"><img class="pix" src="${A('ui_plus.png')}"></div><div class="body"><div class="t">ДОБАВИТЬ СТАТЬЮ</div></div></div>`;
+}
+
+/* ═══════════════════ ФОРУМ ═══════════════════ */
+const DEFAULT_FORUM=[
+  {author:'СОСЕД_87', t:'ШУМНЫЕ СОСЕДИ ПО НОЧАМ', body:'После 23:00 громко у 5 подъезда. Кто знает, как поговорить?', likes:24, cm:12, time:'2 ЧАСА НАЗАД'},
+  {author:'ЦВЕТОЧНЫЙ_АКТИВИСТ', t:'ПЛОЩАДКА ДЛЯ ВЫГУЛА СОБАК', body:'Предлагаю сделать площадку за домом, место есть. Нужны руки.', likes:37, cm:8, time:'5 ЧАСОВ НАЗАД'},
+  {author:'ЮРИСТ_ОНЛАЙН', t:'КАК ОСПОРИТЬ НЕЗАКОННУЮ ПЕРЕПЛАНИРОВКУ?', body:'Собрали подписи, дальше что? Кто сталкивался?', likes:12, cm:19, time:'ВЧЕРА'},
+];
+function doneCount(){ return Object.values(S_.quests).filter(s=>s==='done').length; }
+let forumTab_='recent';
+function forumTab(t,btn){ forumTab_=t; document.querySelectorAll('#forumModal .chips .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on'); renderForum(); }
+function openForum(){ renderForum(); openModal('forumModal'); }
+function renderForum(){
+  const list=document.getElementById('forumList');
+  const mine=forumTab_==='mine';
+  const items=mine ? S_.forumPosts : DEFAULT_FORUM.concat(S_.forumPosts);
+  list.innerHTML=(items.length?items:[{author:'—',t:'ТЕМ ПОКА НЕТ',body:'',likes:0,cm:0,time:''}]).map(p=>`
+    <div class="post" style="margin-bottom:10px">
+      <div class="ph"><img class="pix" src="assets/face.png"><span><span class="nick">${p.author}</span>${p.time?' · '+p.time:''}</span></div>
+      <div style="font-size:10px;font-weight:700;line-height:1.5;margin:4px 0">${p.t}</div>
+      ${p.body?`<div class="tiny" style="color:var(--ink-2)">${p.body}</div>`:''}
+      <div class="acts"><span>💬 ${p.cm||0}</span><span>◉ ${p.likes||0}</span></div>
+    </div>`).join('');
+  const comp=document.getElementById('forumCompose');
+  const en = S_.lang==='en';
+  if(doneCount()<1){
+    comp.innerHTML=`<div class="empty-note" style="margin-top:6px">
+      <img class="pix" src="assets/ui_lock.png">${en?'ONLY THOSE WHO COMPLETED AT LEAST ONE QUEST CAN CREATE TOPICS.<br>DONE':'СОЗДАВАТЬ ТЕМЫ МОГУТ ТЕ, КТО ВЫПОЛНИЛ ХОТЯ БЫ ОДНО ЗАДАНИЕ.<br>ВЫПОЛНЕНО'}: ${doneCount()} / 1</div>`;
+  } else {
+    const me=tgName();
+    comp.innerHTML=`
+      <div class="card" style="padding:12px;margin-top:6px">
+        <div class="tiny" style="color:var(--ink-3);margin-bottom:6px">${en?'YOU POST AS':'ВЫ ПИШЕТЕ КАК'}: <b style="color:var(--ink)">${me}</b></div>
+        <input id="fTitle" placeholder="${en?'TOPIC TITLE':'ЗАГОЛОВОК ТЕМЫ'}" style="margin-bottom:8px">
+        <textarea id="fBody" rows="2" placeholder="${en?'YOUR QUESTION':'СУТЬ ВОПРОСА'}"></textarea>
+        <button class="btn block acc mt8" onclick="postTopic()"><img class="pix" src="assets/ui_edit.png">${en?'CREATE TOPIC':'СОЗДАТЬ ТЕМУ'}</button>
+      </div>`;
+  }
+}
+function postTopic(){
+  const t=(document.getElementById('fTitle').value||'').trim();
+  const body=(document.getElementById('fBody').value||'').trim();
+  if(!t){ toast('НУЖЕН ЗАГОЛОВОК ТЕМЫ'); return; }
+  S_.forumPosts.unshift({author:tgName(), t:t.toUpperCase(), body:body.toUpperCase(), likes:0, cm:0, time:'ТОЛЬКО ЧТО'});
+  save(); renderForum(); toast('ТЕМА ОПУБЛИКОВАНА НА ФОРУМЕ ✦');
+}
+
+/* ═══════════════════ ВОЛОНТЁР / TELEGRAM ═══════════════════ */
+function tg(){ return (window.Telegram && window.Telegram.WebApp) || null; }
+function tgName(){
+  const t=tg();
+  if(t && t.initDataUnsafe && t.initDataUnsafe.user){ const u=t.initDataUnsafe.user;
+    return (u.username?('@'+u.username):((u.first_name||'ВОЛОНТЁР')+' '+(u.last_name||'')).trim()).toUpperCase(); }
+  return S_.tgName || 'ВОЛОНТЁР_21';
+}
+function volMail(){
+  const body=encodeURIComponent('Привет! Хочу стать волонтёром 21 в своём районе.\n\nМоё имя: '+tgName()+'\nРайон/город: \nПроблемы, которые заметил: \n1) \n2) \n3) \n');
+  location.href='mailto:21movement@gmail.com?subject='+encodeURIComponent('Хочу стать волонтёром 21')+'&body='+body;
+  toast('ОТКРЫВАЮ ПОЧТУ НА 21MOVEMENT@GMAIL.COM ✦');
 }
 
 /* ═══════════════════ СУД ═══════════════════ */
@@ -1177,7 +1562,7 @@ function renderCrowd(){
   }).join('')+`<button class="btn block" style="margin-bottom:0" onclick="toast('ПРОЕКТ ПЕРЕДАН ЖИТЕЛЯМ ◆')"><img class="pix" src="assets/ui_plus.png">СОЗДАТЬ ПРОЕКТ</button>`;
   renderBudget([['БЛАГОУСТРОЙСТВО',40],['ИНФРАСТРУКТУРА',25],['БЕЗОПАСНОСТЬ',15],['ЭКОЛОГИЯ',10],['ОБРАЗОВАНИЕ',10]]);
 }
-function fund(i){ if(S_.wallet<50){ toast('В ОБЩАКЕ ПУСТО · ВНЕСИТЕ СРЕДСТВА'); return; }
+function fund(i){ if(S_.wallet<50){ toast('БЮДЖЕТ ПУСТ · ВНЕСИТЕ СРЕДСТВА'); return; }
   S_.wallet-=50; S_.projects[i].have+=50; S_.karma+=3; save(); renderCrowd(); renderStats(); toast('+50 ◆ В ПРОЕКТ · +3 КАРМЫ'); }
 function donate(n){ S_.wallet+=n; save(); renderCrowd(); renderStats(); toast(n+' ◆ В ОБЩЕМ КОШЕЛЬКЕ'); }
 function renderBudget(rows){
@@ -1203,8 +1588,50 @@ function openCustom(){
 }
 function wear(k,f){ if(k==='hat')S_.hat=f; else S_.acc=f; save(); renderStats(); openCustom(); }
 
+/* ═══════════════════ ИНВЕНТАРЬ / АРТЕФАКТЫ ═══════════════════ */
+function grantArtifact(q){
+  let aid = q.art;
+  const art = ARTIFACTS.find(a=>a.id===aid);
+  if(!aid || !art || art.excl){
+    aid = (ARTIFACTS.find(a=>!a.excl && !S_.inventory[a.id])||{}).id;  /* следующий НЕ эксклюзив */
+  }
+  if(!aid || S_.inventory[aid]) return null;                 /* уже выдан / нечего */
+  S_.inventory[aid] = {from: (q.t||'ЗАДАНИЕ РАЙОНА').slice(0,26)};
+  S_.invNew = aid; save();
+  return ARTIFACTS.find(a=>a.id===aid) || null;
+}
+function invOwned(){ return ARTIFACTS.filter(a=>S_.inventory[a.id]); }
+function invStats(){
+  const n = invOwned().length;
+  return [['СИЛ',4+Math.floor(n/3)],['ИНТ',9+Math.floor(n/2)],['ЗАЩ',3+Math.floor(n/3)],
+          ['ЛОВ',6+Math.floor(n/3)],['УДЧ',5+n],['XP','+'+(n*10)+'%']];
+}
+function openInv(){
+  const owned = invOwned().map(a=>a.id);
+  document.getElementById('invIntro').innerHTML =
+    tr('АРТЕФАКТЫ — НАГРАДА ЗА ЗАДАНИЯ РАЙОНА.')+'<br>'+
+    tr('НЕ КУПИТЬ, МОЖНО ТОЛЬКО ЗАСЛУЖИТЬ.')+' '+
+    (S_.lang==='en'?'COLLECTED':'СОБРАНО')+': <b>'+owned.length+'</b>/'+ARTIFACTS.length;
+  document.getElementById('invStats').innerHTML = invStats()
+    .map(([k,v])=>`<span>${k} <b>${v}</b></span>`).join('');
+  const en = S_.lang==='en';
+  document.getElementById('invGrid').innerHTML = ARTIFACTS.map(a=>{
+    const got = S_.inventory[a.id];
+    if(got) return `<div class="slot">${S_.invNew===a.id?`<span class="nb">${en?'NEW':'НОВОЕ!'}</span>`:''}<img class="pix" src="${A(a.f)}">
+        <span class="nm">${en?a.en:a.n}</span><span class="qd">★ ${en?a.eq:a.q}</span></div>`;
+    return `<div class="slot locked"><span class="qm">${a.excl?`<img class="pix" src="${A('ui_lock.png')}" style="width:40px;height:40px;opacity:.55">`:'?'}</span><span class="nm">???</span>
+        <span class="qd">${a.excl?(en?'SECRET CODE':'СЕКРЕТНЫЙ КОД'):(en?'FROM A QUEST':'ЗА ЗАДАНИЕ')}</span></div>`;
+  }).join('');
+  S_.invNew = null; save();
+  openModal('invModal');
+}
+
 /* ═══════════════════ ИИ-АГЕНТ ═══════════════════ */
 const AI_RULES=[
+  [['фреско','fresco','венера','ресурсо','ресурс-ориент','автоматиз','утоп'], 'ЖАК ФРЕСКО — инженер и автор «ПРОЕКТА ВЕНЕРА»: ресурсы планеты — общее достояние, автоматизация освобождает людей от рутины, а не плодит безработицу. Читай в ЭНЦИКЛОПЕДИЯ → ИДЕИ 🤖'],
+  [['кропоткин','взаимопомощь','анарх','общин','самоуправ','князь'], 'КРОПОТКИН: выживают не самые злые, а самые дружные. Взаимопомощь — двигатель эволюции; община решает дела сама, кругом соседей. Это и есть наш СУД СООБЩЕСТВА и БЮДЖЕТ ✊ Раздел: ЭНЦИКЛОПЕДИЯ → ИДЕИ.'],
+  [['автоном','независим','самому','своими руками','выжива'], 'АВТОНОМНАЯ ЖИЗНЬ: своя вода (фильтр + сбор дождя), своя энергия (солнце + ветер), своя еда (огород + компост), общий инструмент и взаимопомощь двора. Всё это — в ЭНЦИКЛОПЕДИИ 📚'],
+  [['биер','киберсин','управле','данные района','ai','ии'], 'КИБЕРНЕТИКА БИЕРА («Киберсин»): данные об общих ресурсах позволяют распределять по потребностям честнее денег. В «21» так работает AI-анализ бюджета района ⚙️'],
   [['вод','пить','фильтр','капл'], 'ВОДА: песок → уголь → ткань, 3 слоя. Кипяти 10 минут. Точка воды — на карте 💧'],
   [['ремонт','чин','слом','доск','молоток'], 'РЕМОНТ: возьми молоток и отвёртку, открой квест «ПОЧИНИТЬ СКАМЕЙКУ» — там пошагово 🔧'],
   [['книг','знан','энцикл','стат'], 'ЗНАНИЯ: вкладка ЭНЦИКЛОПЕДИЯ 📚 — вода, энергия, еда, ремонт, право. Делись книгами с соседями.'],
@@ -1212,7 +1639,7 @@ const AI_RULES=[
   [['квест','задан','мисси','дела'], 'КВЕСТЫ: вкладка ⚔️ — помогай соседям, чини двор, получай XP и карму. Каждое действие делает тебя сильнее.'],
   [['ед','еда','огород','голод'], 'ЕДА: огород на подоконнике, компост из отходов, общие закупки впрок 🍎 — раздел ЭНЦИКЛОПЕДИЯ.'],
   [['энерг','свет','ламп','электр'], 'ЭНЕРГИЯ: светодиоды, солнечная панель из хлама, ветряк во дворе ⚡ — раздел ЭНЦИКЛОПЕДИЯ.'],
-  [['деньг','кошел','крауд','сбор','бюджет'], 'ОБЩАК: ОБЩИЙ КОШЕЛЁК на вкладке квестов ◆ — соседи собирают средства, AI распределяет по приоритету.'],
+  [['деньг','кошел','крауд','сбор','бюджет'], 'БЮДЖЕТ на вкладке квестов ◆ — соседи собирают средства, AI распределяет по приоритету.'],
   [['21','субботник','ресурс','пай'], '21-ГО ЧИСЛА — ДЕНЬ РЕСУРСА: вода, еда и энергия перераспределяются по району. Не пропусти ✦'],
 ];
 function aiAnswer(t){
@@ -1224,8 +1651,8 @@ function openAi(){
   openModal('aiModal');
   const chat=document.getElementById('aiChat');
   if(!chat.dataset.greeted){ chat.dataset.greeted=1;
-    chat.innerHTML=`<div class="msg"><div class="av"><img class="pix" src="${A('robot.png')}"></div><div class="bubble2">ЧЕМ МОГУ ПОМОЧЬ? Я ЗНАЮ ПРО ВОДУ, РЕМОНТ, КВЕСТЫ, СУД И ОБЩАК.</div></div>`;
-    document.getElementById('aiQuick').innerHTML=['ВОДА?','РЕМОНТ?','КВЕСТ?','СУД?','ОБЩАК?','21-Е?']
+    chat.innerHTML=`<div class="msg"><div class="av"><img class="pix" src="${A('robot.png')}"></div><div class="bubble2">ЧЕМ МОГУ ПОМОЧЬ? Я ЗНАЮ ПРО ВОДУ, РЕМОНТ, КВЕСТЫ, СУД И БЮДЖЕТ.</div></div>`;
+    document.getElementById('aiQuick').innerHTML=['ВОДА?','РЕМОНТ?','КВЕСТ?','СУД?','БЮДЖЕТ?','21-Е?']
       .map(q=>`<button class="chip" onclick="document.getElementById('aiInput').value='${q}';aiSend()">${q}</button>`).join('');
   }
 }
@@ -1247,16 +1674,161 @@ function checkResourceDay(manual){
 function closeResDay(){ document.getElementById('resDay').classList.remove('on'); S_.karma+=21; S_.coins+=21; save(); renderStats(); toast('ПАЁК ПОЛУЧЕН · +21 ◆ +21 КАРМЫ ✦'); }
 
 /* ═══════════════════ АДМИН ═══════════════════ */
+const ADMIN_PASS = '21admin';   /* ← пароль админ-панели, поменяй на свой */
+function openAdmin(){
+  if(S_.admin){ openModal('adminModal'); return; }
+  document.getElementById('adminPass').value='';
+  openModal('adminPassModal');
+  setTimeout(()=>{ const f=document.getElementById('adminPass'); if(f) f.focus(); },150);
+}
+function adminLogin(){
+  const v=(document.getElementById('adminPass').value||'').trim();
+  if(v===ADMIN_PASS){
+    S_.admin=true; save();
+    closeModal('adminPassModal'); openModal('adminModal');
+    toast('ДОСТУП РАЗРЕШЁН ⚡');
+  } else {
+    toast('НЕВЕРНЫЙ ПАРОЛЬ');
+    document.getElementById('adminPass').value='';
+  }
+}
 function admTab(t,btn){
   document.querySelectorAll('#adminModal .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on');
-  ['problem','post','stats'].forEach(x=>document.getElementById('adm'+x[0].toUpperCase()+x.slice(1)).style.display=x===t?'block':'none');
+  ['quest','problem','post','reward','stats'].forEach(x=>{ const el=document.getElementById('adm'+x[0].toUpperCase()+x.slice(1)); if(el) el.style.display=x===t?'block':'none'; });
   if(t==='stats') renderAdminStats();
+  if(t==='reward'){ if(typeof editRewardCancel==='function') editRewardCancel(); renderAdminRewards(); }
+}
+/* GPS в форму задания */
+function getMyPos(){
+  toast('ИЩУ СПУТНИКИ...');
+  askPos(p=>{
+    document.getElementById('aqLat').value=p.lat.toFixed(6);
+    document.getElementById('aqLng').value=p.lng.toFixed(6);
+    toast('КООРДИНАТЫ ПОЛУЧЕНЫ 📍');
+  },()=>toast('НЕ УДАЛОСЬ ПОЛУЧИТЬ GPS'));
+}
+/* Чтение выбранной картинки в dataURL (фото задания) */
+function readFile(inputId, cb){
+  const inp=document.getElementById(inputId);
+  const f=inp.files&&inp.files[0]; if(!f){ cb(null); return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    // ужимаем до 640px, чтобы не раздувать localStorage
+    const img=new Image();
+    img.onload=()=>{
+      const max=640; const s=Math.min(1,max/Math.max(img.width,img.height));
+      const w=Math.round(img.width*s), h=Math.round(img.height*s);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+      x.drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.72));
+    };
+    img.onerror=()=>cb(r.result);
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+document.addEventListener('change',e=>{
+  if(e.target && e.target.id==='aqFile'){
+    readFile('aqFile',url=>{
+      const prev=document.getElementById('aqPrev');
+      if(url){ prev.src=url; prev.style.display='block'; }
+      else prev.style.display='none';
+    });
+  }
+});
+/* Публикация задания: обязательны название/описание/координаты */
+function addQuest(){
+  const t=(document.getElementById('aqName').value||'').trim();
+  const desc=(document.getElementById('aqDesc').value||'').trim();
+  const lat=parseFloat(document.getElementById('aqLat').value);
+  const lng=parseFloat(document.getElementById('aqLng').value);
+  const photo=document.getElementById('aqPrev').src && document.getElementById('aqPrev').style.display!=='none'
+    ? document.getElementById('aqPrev').src : null;
+  if(!desc){ toast('НУЖНО ОПИСАНИЕ ЗАДАНИЯ'); return; }
+  if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180){ toast('НУЖНЫ КООРДИНАТЫ: ШИРОТА И ДОЛГОТА'); return; }
+  const xp=Math.max(10,parseInt(document.getElementById('aqXp').value)||50);
+  const karma=Math.max(2,parseInt(document.getElementById('aqKarma').value)||10);
+  S_.userQuests=S_.userQuests||[];
+  const q={ id:'u'+Date.now().toString(36),
+    ic:'q_'+['bench','recycle','plant','lamp','water','hands'][Math.floor(Math.random()*6)]+'.png',
+    t:(t||'НОВОЕ ЗАДАНИЕ').toUpperCase(), desc:desc.toUpperCase(),
+    lat, lng, xp, karma, badge:'bd_help.png', photo };
+  S_.userQuests.push(q);
+  ['aqName','aqDesc','aqLat','aqLng'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aqFile').value=''; document.getElementById('aqPrev').style.display='none';
+  save(); renderQuests(); renderMapPoints(); syncYmarks(); renderDistrict(); renderStats();
+  toast('ЗАДАНИЕ ОПУБЛИКОВАНО НА КАРТЕ ⚔');
+  closeModal('adminModal');
 }
 function admIconSetup(elId,cb){
   document.getElementById(elId).innerHTML=ICON_POOL.map((f,i)=>
     `<button class="chip ${i===0?'on':''}" data-ic="${f}" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')"><img class="pix" src="${A(f)}" style="width:18px;height:18px;vertical-align:middle"></button>`).join('');
 }
 function pickedIcon(id){ const e=document.querySelector('#'+id+' .chip.on'); return e?e.dataset.ic:ICON_POOL[0]; }
+
+/* ── Эксклюзивные награды за пароль ── */
+let _rewardEditId=null;
+function addRewardItem(){
+  const n=(document.getElementById('arName').value||'').trim();
+  const d=(document.getElementById('arDesc').value||'').trim();
+  const c=(document.getElementById('arCode').value||'').trim();
+  if(!n){ toast('НУЖНО НАЗВАНИЕ АЙТЕМА'); return; }
+  if(!d){ toast('НУЖНО ОПИСАНИЕ НАГРАДЫ'); return; }
+  if(!c){ toast('НУЖЕН СЕКРЕТНЫЙ ПАРОЛЬ'); return; }
+  const xp=Math.max(10,parseInt(document.getElementById('arXp').value)||80);
+  const karma=Math.max(2,parseInt(document.getElementById('arKarma').value)||20);
+  S_.rewards=S_.rewards||[];
+  if(_rewardEditId){
+    const r=S_.rewards.find(x=>x.id===_rewardEditId);
+    if(r){ r.n=n.toUpperCase(); r.d=d.toUpperCase(); r.code=c.toUpperCase().trim(); r.xp=xp; r.karma=karma; }
+    toast('НАГРАДА ОБНОВЛЕНА ✓');
+  } else {
+    S_.rewards.push({ id:'r'+Date.now().toString(36), n:n.toUpperCase(), d:d.toUpperCase(),
+      code:c.toUpperCase().trim(), xp, karma });
+    toast('НАГРАДА СОЗДАНА 🔑 РАЗДАЙ ПАРОЛЬ: '+c.toUpperCase());
+  }
+  save(); editRewardCancel(false); renderAdminRewards();
+}
+function editReward(id){
+  const r=(S_.rewards||[]).find(x=>x.id===id); if(!r) return;
+  _rewardEditId=id;
+  document.getElementById('arName').value=r.n;
+  document.getElementById('arDesc').value=r.d;
+  document.getElementById('arCode').value=r.code;
+  document.getElementById('arXp').value=r.xp;
+  document.getElementById('arKarma').value=r.karma;
+  document.getElementById('arSubmit').innerHTML='<img class="pix" src="assets/mk_done.png">СОХРАНИТЬ ИЗМЕНЕНИЯ';
+  document.getElementById('arCancel').style.display='block';
+  document.getElementById('arName').scrollIntoView({block:'center'});
+}
+function editRewardCancel(clear){
+  _rewardEditId=null;
+  if(clear!==false) ['arName','arDesc','arCode'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('arXp').value=80; document.getElementById('arKarma').value=20;
+  document.getElementById('arSubmit').innerHTML='<img class="pix" src="assets/ui_plus.png">СОЗДАТЬ НАГРАДУ';
+  document.getElementById('arCancel').style.display='none';
+}
+function renderAdminRewards(){
+  const el=document.getElementById('arList'); if(!el) return;
+  if(!S_.rewards || !S_.rewards.length){ el.innerHTML=`<div class="empty-note"><img class="pix" src="${A('ui_lock.png')}">НАГРАД ПОКА НЕТ. СОЗДАЙ ПЕРВУЮ.</div>`; return; }
+  el.innerHTML='<label class="f">СОЗДАННЫЕ НАГРАДЫ</label>'+S_.rewards.map(r=>{
+    const got=(S_.unlocked||[]).includes(r.id);
+    return `<div style="border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:10px;margin-bottom:8px;background:var(--card)">
+      <div class="nm" style="font-size:8px;font-weight:700">${r.n}</div>
+      <div class="tiny mt8" style="font-size:7.5px">🔑 ПАРОЛЬ: <b>${r.code}</b> · ⚡${r.xp} · ◉${r.karma}${got?' · ОТКРЫТА':''}</div>
+      <div class="tiny mt8" style="white-space:pre-line;font-size:7px;color:var(--ink-3)">${r.d.slice(0,120)}${r.d.length>120?'…':''}</div>
+      <div class="row mt8" style="gap:8px">
+        <button class="btn acc" style="font-size:7px;padding:6px 10px" onclick="editReward('${r.id}')">РЕДАКТИРОВАТЬ</button>
+        <button class="btn ghost" style="font-size:7px;padding:6px 10px" onclick="delReward('${r.id}')">УДАЛИТЬ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function delReward(id){
+  S_.rewards=(S_.rewards||[]).filter(r=>r.id!==id);
+  save(); renderAdminRewards(); toast('НАГРАДА УДАЛЕНА');
+}
 function addProblem(){
   const name=(document.getElementById('apName').value||'НОВАЯ ПРОБЛЕМА').toUpperCase();
   const ic=pickedIcon('apIcons');
@@ -3633,7 +4205,178 @@ document.addEventListener('error', function(e){
     t.style.objectFit='contain';
   }
 }, true);
+/* Оживление: реплики героя чередуются, монетки подпрыгивают при начислении */
+const HERO_LINES=[
+  'РАЙОН ЦВЕТОЧНЫЙ<br>ЖИВЁМ ЛУЧШЕ КАЖДЫЙ ДЕНЬ',
+  '21 — ЭТО МЫ САМИ<br>ДВОР ДЕЛАЮТ ЛЮДИ',
+  'ВЗАИМОПОМОЩЬ —<br>СИЛА ДВОРА ✦',
+  'ЧТО МОЖЕШЬ СДЕЛАТЬ<br>СЕГОДНЯ?'];
+let heroLine=0;
+setInterval(()=>{ const b=document.getElementById('heroBubble'); if(!b)return;
+  heroLine=(heroLine+1)%HERO_LINES.length; b.innerHTML=HERO_LINES[heroLine]; }, 9000);
+function bumpCoins(){ ['hpCoin','walletBig'].forEach(id=>{ const e=document.getElementById(id); if(e){ e.classList.remove('coin-bump'); void e.offsetWidth; e.classList.add('coin-bump'); }}); }
+
+/* ═══════════════════ СЕКРЕТНЫЕ НАГРАДЫ (ПАРОЛЬ ОТ АДМИНА) ═══════════════════ */
+/* ссылки в описании награды делаем кликабельными: строки вида http(s)://… */
+function linkify(txt){
+  const esc=String(txt).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/((https?:\/\/)[^\s]+)/gi, m=>`<a href="${m}" target="_blank" rel="noopener" style="color:var(--ink);font-weight:700;text-decoration:underline;word-break:break-all">${m}</a>`);
+}
+function openReward(){
+  S_.unlocked=S_.unlocked||[];
+  const rewards=S_.rewards||[];
+  const open=rewards.filter(r=>S_.unlocked.includes(r.id));
+  const closed=rewards.filter(r=>!S_.unlocked.includes(r.id));
+  const en=S_.lang==='en';
+  let html='';
+  if(open.length){
+    html+='<h3 style="font-size:8px;margin:4px 0 8px">'+(en?'UNLOCKED':'ОТКРЫТО')+'</h3>'+open.map(r=>`
+      <div style="border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--acc);padding:12px;margin-bottom:10px;background:var(--card)">
+        <div class="nm" style="font-size:9px;font-weight:700">🔓 ${r.n}</div>
+        <div class="tiny mt8" style="font-size:8px;line-height:2;white-space:pre-line">${linkify(r.d)}</div>
+      </div>`).join('');
+  }
+  if(closed.length){
+    html+='<h3 style="font-size:8px;margin:12px 0 8px">'+(en?'LOCKED — ENTER CODE':'ЗАКРЫТО — ВВЕДИ КОД')+'</h3>'+closed.map(r=>`
+      <div style="border:var(--bw) solid var(--ink);box-shadow:2px 2px 0 var(--ink);padding:12px;margin-bottom:10px;background:var(--paper)">
+        <div class="nm" style="font-size:9px;font-weight:700">🔒 ???</div>
+        <div class="tiny mt8" style="font-size:7.5px;color:var(--ink-3)">${en?'EXCLUSIVE FOR THE 21. ASK THE ADMIN FOR THE CODE.':'ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ. УЗНАЙ КОД У АДМИНА.'}</div>
+        <div class="row mt8" style="gap:8px">
+          <input id="code_${r.id}" placeholder="${en?'CODE':'КОД'}" style="text-transform:uppercase;flex:1" oninput="this.value=this.value.toUpperCase()">
+          <button class="btn acc" style="padding:10px 14px" onclick="redeemReward('${r.id}')">${en?'OPEN':'ОТКРЫТЬ'}</button>
+        </div>
+      </div>`).join('');
+  }
+  if(!rewards.length){
+    html=`<div class="empty-note"><img class="pix" src="${A('ui_lock.png')}">${en?'NO SECRET REWARDS YET.<br>COMPLETE QUESTS AND ASK THE ADMIN FOR A CODE.':'ПОКА НЕТ СЕКРЕТНЫХ НАГРАД.<br>ВЫПОЛНЯЙ ЗАДАНИЯ И СПРОСИ КОД У АДМИНА.'}</div>`;
+  }
+  document.getElementById('rewardBody').innerHTML=html;
+  openModal('rewardModal');
+}
+function redeemReward(id){
+  const r=(S_.rewards||[]).find(x=>x.id===id); if(!r) return;
+  const inp=document.getElementById('code_'+id);
+  const code=(inp?inp.value:'').trim().toUpperCase();
+  if(!code){ toast(S_.lang==='en'?'ENTER THE CODE':'ВВЕДИ КОД'); return; }
+  if(code!==r.code.toUpperCase()){ toast(S_.lang==='en'?'WRONG CODE':'НЕВЕРНЫЙ КОД'); inp.value=''; return; }
+  S_.unlocked=S_.unlocked||[]; if(!S_.unlocked.includes(id)) S_.unlocked.push(id);
+  S_.xp+=r.xp; S_.karma+=r.karma;
+  save(); renderStats(); renderQuests();
+  toast((S_.lang==='en'?'UNLOCKED! +':'ОТКРЫТО! +')+r.xp+' XP');
+  openReward();
+}
+
+/* ═══════════════════ ЯЗЫК ИНТЕРФЕЙСА (RU/EN) ═══════════════════ */
+/* Переводятся только подписи интерфейса (точные совпадения).
+   Контент — квесты, посты, форум, статьи — НЕ переводится. */
+const I18N = {
+  'ГЛАВНАЯ':'HOME','КАРТА':'MAP','КВЕСТЫ':'QUESTS','ЭНЦИКЛОПЕДИЯ':'WIKI','ПРОФИЛЬ':'PROFILE',
+  'КВЕСТ':'QUEST','ВЫПОЛНЕНО':'DONE','ПОСТ':'POST','ПРОБЛЕМА':'ISSUE','ПРОЕКТ':'PROJECT','СТАТЬЯ':'ARTICLE','ФОТО':'PHOTO',
+  'КАРМА ◉':'KARMA ◉','КАРМА +':'KARMA +','КОШЕЛЁК ◆':'WALLET ◆','УРОВЕНЬ':'LEVEL','РЕПУТАЦИЯ ◉':'REPUTATION ◉',
+  'БЮДЖЕТ':'BUDGET','СУД':'COURT','ПОМОЧЬ':'HELP','ЧИТАТЬ':'READ',
+  'ВСЕ':'ALL','ДОСТУПНЫЕ':'AVAILABLE','МОИ':'MINE','ВЫПОЛНЕНЫ':'COMPLETED',
+  'ОТКРЫТЬ':'OPEN','В ИГРЕ':'IN PROGRESS','СУД СООБЩЕСТВА':'COMMUNITY COURT','ФОРУМ РАЙОНА':'DISTRICT FORUM',
+  'СТАТЬ ВОЛОНТЁРОМ 21':'BECOME A 21 VOLUNTEER','СКАЧАТЬ СТИКЕР':'DOWNLOAD STICKER',
+  'ПОСЛЕДНИЕ':'LATEST','МОИ ТЕМЫ':'MY TOPICS','СОЗДАТЬ ТЕМУ':'CREATE TOPIC','ЗАГОЛОВОК ТЕМЫ':'TOPIC TITLE','СУТЬ ВОПРОСА':'YOUR QUESTION',
+  'ЗАГОЛОВОК':'TITLE','ТЕКСТ':'TEXT','НАЗВАНИЕ':'NAME','ОПУБЛИКОВАТЬ В ЛЕНТУ':'PUBLISH TO FEED',
+  'КАК СТАТЬ ВОЛОНТЁРОМ 21':'HOW TO BECOME A 21 VOLUNTEER','СКАЧАТЬ QR-СТИКЕР':'DOWNLOAD QR STICKER',
+  'РЕСУРСЫ ГОРОДА':'CITY RESOURCES','БЮДЖЕТ РАЙОНА:':'DISTRICT BUDGET:','СОЗДАТЬ ПРОЕКТ':'CREATE PROJECT','ПЕРЕСЧИТАТЬ ПО ПРИОРИТЕТАМ':'RECALCULATE BY PRIORITY',
+  'ДЕНЬ РЕСУРСА':'RESOURCE DAY','НАГРАДА':'REWARD','ПОЛУЧИТЬ ПАЙЁК ✦':'GET RATION ✦','ПОНЯТНО ✦':'GOT IT ✦','ДАЛЕЕ ▶':'NEXT ▶',
+  'ЗНАНИЯ РАЙОНА':'DISTRICT KNOWLEDGE','БАЗА ЗНАНИЙ':'KNOWLEDGE BASE','ИДЕИ':'IDEAS','ВОДА':'WATER','ЭНЕРГИЯ':'ENERGY','ЕДА':'FOOD','ДОБАВИТЬ СТАТЬЮ':'ADD ARTICLE',
+  'ГАРДЕРОБ':'WARDROBE','ИНВЕНТАРЬ':'INVENTORY','ЗНАНИЯ':'KNOWLEDGE','ЗНАЧКИ':'BADGES','СУББОТНИК':'CLEANUP DAY',
+  'ЗНАЧКИ СКАУТА 21':'21 SCOUT BADGES','СТАТИСТИКА РАЙОНА':'DISTRICT STATS','ТЁМНАЯ / СВЕТЛАЯ':'DARK / LIGHT',
+  'ГОЛОВНОЙ УБОР':'HEADWEAR','АКСЕССУАР':'ACCESSORY',
+  'ЗА ЗАДАНИЕ':'FROM A QUEST','ЛЕНТА РАЙОНА':'DISTRICT FEED','ТОЧКИ РАЙОНА':'DISTRICT SPOTS','ТОЧЕК ПОКА НЕТ.':'NO SPOTS YET.',
+  'ТЕ, КТО РЯДОМ':'THOSE NEARBY','УДЕРЖИВАЙ':'HOLD','НАЗВАНИЕ ЗАДАНИЯ':'QUEST NAME','ОПИСАНИЕ ЗАДАНИЯ *':'QUEST DESCRIPTION *',
+  'ОПИСАНИЕ / ПИКТОГРАММА':'DESCRIPTION / PICTOGRAM','КАРТИНКА-ПИКТОГРАММА':'PICTOGRAM IMAGE','ПОДНЯТЬ ВОПРОС':'RAISE A QUESTION',
+  'СТАТИСТИКА':'STATS','АДМИН-ПАНЕЛЬ':'ADMIN PANEL','СТИКЕР 21':'STICKER 21','ВОЙТИ':'ENTER',
+  'ЗАДАНИЕ':'QUEST','НАПИСАТЬ 21MOVEMENT@GMAIL.COM':'EMAIL 21MOVEMENT@GMAIL.COM',
+  'Городской ассистент 21':'City assistant 21','ЯЗЫК: РУС':'LANG: ENG','ЯЗЫК: ENG':'LANG: RUS',
+  'СИЛ':'STR','ИНТ':'INT','ЗАЩ':'DEF','ЛОВ':'AGI','УДЧ':'LCK',
+  'ИНСТРУМЕНТЫ ГОТОВЫ ▶':'TOOLS READY ▶','СДЕЛАЛ ▶':'DONE ▶','БЕРУСЬ ЗА ДЕЛО ▶':'TAKE THE QUEST ▶',
+  'ЗАВЕРШИТЬ ЗАДАНИЕ ✓':'COMPLETE QUEST ✓','ЗАБРАТЬ НАГРАДУ':'CLAIM REWARD',
+  'СОБРАНО':'COLLECTED','АРТЕФАКТЫ — НАГРАДА ЗА ЗАДАНИЯ РАЙОНА.':'ARTIFACTS — REWARDS FOR DISTRICT QUESTS.',
+  'НЕ КУПИТЬ, МОЖНО ТОЛЬКО ЗАСЛУЖИТЬ.':'CAN’T BE BOUGHT — ONLY EARNED.',
+  'ВВЕСТИ КОД НАГРАДЫ':'ENTER REWARD CODE','СЕКРЕТНЫЙ КОД':'SECRET CODE','НАГРАДА':'REWARD',
+  'ОТКРЫТО':'UNLOCKED','ОТКРЫТЬ':'OPEN','КОД':'CODE','УДАЛИТЬ':'DELETE','СОЗДАТЬ НАГРАДУ':'CREATE REWARD',
+  'НАЗВАНИЕ ЭКСКЛЮЗИВНОГО АЙТЕМА':'EXCLUSIVE ITEM NAME','НАЗВАНИЕ НАГРАДЫ':'REWARD NAME',
+};
+function tRuToEn(s){ return (Object.prototype.hasOwnProperty.call(I18N,s)) ? I18N[s] : s; }
+function tr(s){ if(!s) return s; s=String(s); return (S_&&S_.lang==='en') ? tRuToEn(s) : s; }
+
+function applyLang(root){
+  root = root || document.body;
+  const en = S_ && S_.lang==='en';
+  /* длинные статичные блоки с готовым переводом */
+  root.querySelectorAll('[data-en]').forEach(el=>{
+    if(en){ if(el.dataset.ru===undefined) el.dataset.ru = el.innerHTML; el.innerHTML = el.dataset.en; }
+    else if(el.dataset.ru!==undefined){ el.innerHTML = el.dataset.ru; }
+  });
+  /* короткие подписи: точные текстовые узлы */
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+    acceptNode(n){ if(!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      if(n._ru===undefined){ const v=n.nodeValue; if(I18N[v.trim()]!==undefined || (v.trim() in I18N)) n._ru=v; }
+      return NodeFilter.FILTER_ACCEPT; }
+  });
+  const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(n=>{
+    if(en){
+      if(n._ru===undefined){ const key=n.nodeValue.trim(); if(key in I18N){ n._ru=n.nodeValue; } }
+      if(n._ru!==undefined){
+        const key=n._ru.trim(); if(key in I18N){
+          const lead=n._ru.match(/^\s*/)[0], trail=n._ru.match(/\s*$/)[0];
+          n.nodeValue=lead+I18N[key]+trail;
+        }
+      }
+    } else if(n._ru!==undefined){ n.nodeValue=n._ru; n._ru=undefined; }
+  });
+  /* плейсхолдеры инпутов */
+  root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(inp=>{
+    if(en){ if(inp._ruPh===undefined) inp._ruPh=inp.placeholder; const ph=inp._ruPh.trim(); if(ph in I18N) inp.placeholder=I18N[ph]; }
+    else if(inp._ruPh!==undefined){ inp.placeholder=inp._ruPh; inp._ruPh=undefined; }
+  });
+  /* кнопка-переключатель */
+  [['langBtn','🌐 RU','🌐 EN'],['langBtnLand','🌐 RU','🌐 EN']].forEach(([id,ru,enx])=>{
+    const lb=document.getElementById(id); if(lb) lb.textContent = en ? enx : ru;
+  });
+}
+let _langRaf=null, _langApplying=false;
+function scheduleApplyLang(){
+  if(_langApplying || !S_ || S_.lang!=='en') return;
+  if(_langRaf) cancelAnimationFrame(_langRaf);
+  _langRaf=requestAnimationFrame(()=>{ _langRaf=null; _langApplying=true; try{ applyLang(document.body); }catch(e){} _langApplying=false; });
+}
+function toggleLang(){
+  S_.lang = (S_.lang==='en') ? 'ru' : 'en';
+  save();
+  /* сброс кэша оригиналов при возврате на русский не нужен — applyLang сам восстанавливает */
+  applyLang(document.body);
+  if(S_.lang==='en'){ const to=tr('ЯЗЫК ИНТЕРФЕЙСА: ENGLISH'); toast('INTERFACE LANGUAGE: EN'); }
+  else toast('ЯЗЫК ИНТЕРФЕЙСА: РУССКИЙ');
+}
+/* динамически дорисованный контент переводим на лету */
+(function(){
+  if(!window.MutationObserver) return;
+  const mo=new MutationObserver(()=>scheduleApplyLang());
+  mo.observe(document.body,{childList:true,subtree:true});
+})();
+
 load(); renderStats(); renderFeed(); renderQuests(); renderPets(); renderAgents();
+applyLang(document.body);
+askPos(()=>{ renderMapPoints(); }, ()=>{});
+/* Telegram Mini App: регистрация через Telegram сразу, личность из tg.initDataUnsafe */
+(function(){
+  const tg=(window.Telegram&&window.Telegram.WebApp)||null;
+  if(tg){ try{
+    tg.ready();
+    try{ tg.expand(); }catch(e){}
+    if(tg.initDataUnsafe && tg.initDataUnsafe.user){
+      const u=tg.initDataUnsafe.user;
+      S_.tgName=(u.username?('@'+u.username):((u.first_name||'ВОЛОНТЁР')+' '+(u.last_name||''))).trim().toUpperCase();
+      save();
+    }
+  }catch(e){} }
+})();
 admIconSetup('apIcons'); admIconSetup('apPostIcons');
 // Яндекс карты
 var ymapLoad=function(){ var s=document.createElement('script');
