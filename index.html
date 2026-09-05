@@ -1,0 +1,4393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#121212">
+<title>21 — городская ОС</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --paper:#cec4ab;      /* тёплая e-ink бумага */
+  --card:#dcd5c1;       /* светло-серые панели/кнопки */
+  --card-2:#cfc7b0;     /* вторичная подложка */
+  --ink:#47433d;        /* тёмно-серые чернила (не чёрный) */
+  --ink-2:#5b564d;      /* тёмно-серый текст */
+  --ink-3:#8c8574;      /* приглушённый */
+  --line:#a49a86;       /* средне-серая линия (точечные рамки) */
+  --line-dk:#837a68;    /* тёмнее — для активных/фаски */
+  --acc:#bdb49c;        /* e-ink серый вместо бежевого */
+  --acc-d:#9c947f;
+  --bw:3px;             /* толщина рамок */
+  --bdot:3px dotted var(--line);
+  --bdot-dk:3px dotted var(--line-dk);
+  --sh:4px 4px 0 var(--line);   /* серая жёсткая тень */
+  --sh-sm:3px 3px 0 var(--line);
+  --bev:0 5px 0 var(--line-dk); /* фаска кнопки снизу */
+  --r:4px;
+  --pix:'Press Start 2P', ui-monospace, monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--pix); background:var(--paper); color:var(--ink);
+  font-size:9px; line-height:1.9; overflow:hidden;
+  -webkit-font-smoothing:none; font-smooth:never;
+}
+img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
+button{font-family:inherit}
+::selection{background:var(--ink);color:var(--paper)}
+
+/* зерно бумаги */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.10;
+  background-image:url('assets/grain.png');background-size:96px;mix-blend-mode:multiply}
+
+.app{max-width:480px;margin:0 auto;height:100dvh;position:relative;display:flex;flex-direction:column;
+  background:var(--paper);overflow:hidden;border-left:var(--bw) solid var(--ink);border-right:var(--bw) solid var(--ink)}
+
+/* ── СТАТУС-БАР (как на референсах) ── */
+.statusbar{display:flex;align-items:center;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top) + 8px) 18px 6px;font-size:9px;letter-spacing:1px;
+  border-bottom:var(--bw) solid var(--ink);background:var(--paper);z-index:60;position:relative}
+.sb-icons{display:inline-flex;align-items:center;gap:8px}
+.sb-sig{display:inline-flex;align-items:flex-end;gap:2px}
+.sb-sig i{width:3px;background:var(--ink);display:block}
+.sb-sig i:nth-child(1){height:4px}.sb-sig i:nth-child(2){height:7px}.sb-sig i:nth-child(3){height:10px}.sb-sig i:nth-child(4){height:13px}
+.sb-wifi{position:relative;width:15px;height:11px}
+.sb-wifi i{position:absolute;left:50%;border:2px solid var(--ink);border-bottom:none;border-radius:6px 6px 0 0;transform:translateX(-50%)}
+.sb-wifi i:nth-child(1){width:15px;height:8px;bottom:3px}.sb-wifi i:nth-child(2){width:9px;height:5px;bottom:3px}.sb-wifi i:nth-child(3){width:3px;height:2px;bottom:3px;border:none;background:var(--ink)}
+.sb-batt{width:24px;height:12px;border:2px solid var(--ink);border-radius:2px;position:relative;padding:1.5px}
+.sb-batt::after{content:'';position:absolute;right:-4px;top:3px;width:2px;height:4px;background:var(--ink)}
+.sb-batt i{display:block;height:100%;width:72%;background:var(--ink)}
+
+/* ── ЛЕНДИНГ ── */
+#landing{position:absolute;inset:0;z-index:500;background:var(--ink);color:var(--paper);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(env(safe-area-inset-top) + 30px) 26px calc(env(safe-area-inset-bottom) + 26px);
+  overflow:hidden;transition:opacity .5s steps(6),transform .5s;gap:26px}
+#landing.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+#landing::before{content:'';position:absolute;left:0;right:0;bottom:0;height:44%;
+  background:url('assets/mountains.png') bottom/cover no-repeat;opacity:.92;filter:grayscale(1) contrast(1.1)}
+.land-logo{width:70%;max-width:280px;position:relative;z-index:2;
+  filter:invert(1) brightness(1.7) drop-shadow(5px 6px 0 rgba(0,0,0,.55));animation:floaty 3.5s steps(20) infinite}
+.land-tag{position:relative;z-index:2;text-align:center;font-size:9px;line-height:2.2;
+  background:var(--ink);border:var(--bw) solid var(--paper);box-shadow:6px 6px 0 rgba(0,0,0,.6);
+  padding:14px 16px}
+.land-tag b{color:var(--acc)}
+.land-enter{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;gap:14px;align-items:center}
+.land-sub{font-size:7px;color:rgba(244,240,231,.6);z-index:2;letter-spacing:.5px}
+.land-lang{position:relative;z-index:2;background:transparent;border:2px solid rgba(244,240,231,.5);
+  color:rgba(244,240,231,.85);font-family:inherit;font-size:8px;letter-spacing:1px;padding:8px 16px;
+  cursor:pointer;box-shadow:3px 3px 0 rgba(212,163,115,.5)}
+.land-lang:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(212,163,115,.5)}
+
+/* ── КНОПКИ ── */
+.btn{font-family:var(--pix);font-size:9px;letter-spacing:.5px;border:var(--bw) solid var(--ink);
+  background:var(--card);color:var(--ink);padding:14px 16px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:9px;justify-content:center;border-radius:var(--r);
+  box-shadow:var(--sh);transition:transform .06s steps(2),box-shadow .06s;min-height:46px;line-height:1.6}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn img{width:20px;height:20px;image-rendering:pixelated}
+.btn.block{width:100%}
+.btn.dark{background:var(--ink);color:var(--paper)}
+.btn.acc{background:var(--acc);color:#241a0e}
+.btn.ghost{background:var(--card)}
+.btn.small{min-height:38px;padding:9px 12px;font-size:8px;box-shadow:var(--sh-sm)}
+.btn:active{transform:translate(3px,3px)}
+
+/* ── ШАПКА ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;
+  border-bottom:var(--bw) solid var(--ink);background:var(--paper);z-index:20;gap:10px}
+.stat{display:flex;align-items:center;gap:6px;min-width:60px}
+.stat img{width:22px;height:22px;image-rendering:pixelated}
+.stat b{font-size:11px}
+.h-title{font-size:12px;text-align:center;flex:1;letter-spacing:1px}
+.h-ico{display:flex;gap:8px;align-items:center}
+.h-ico img{width:30px;height:30px;cursor:pointer;image-rendering:pixelated;
+  background:var(--card);border:var(--bw) solid var(--ink);border-radius:var(--r);padding:3px;box-shadow:var(--sh-sm);
+  transition:transform .06s}
+.h-ico img:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding:14px 14px calc(92px + env(safe-area-inset-bottom));scrollbar-width:none}
+main::-webkit-scrollbar{display:none}
+.screen{display:none;animation:screenIn .3s steps(5)}
+.screen.on{display:block}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes pop{0%{transform:scale(.92);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ── КАРТОЧКИ ── */
+.card{background:var(--card);border:var(--bw) solid var(--ink);border-radius:var(--r);
+  box-shadow:var(--sh);padding:14px;margin-bottom:16px;position:relative}
+.card.flat{box-shadow:none;background:var(--card-2)}
+.card h3{font-size:10px;margin-bottom:12px;display:flex;align-items:center;gap:8px;letter-spacing:.5px;line-height:1.6}
+.card h3 img{width:22px;height:22px;image-rendering:pixelated}
+.sec-label{display:flex;align-items:center;gap:8px;margin:18px 2px 12px;
+  font-size:8px;color:var(--ink-2);letter-spacing:.5px}
+.sec-label img{width:20px;height:20px;image-rendering:pixelated}
+.sec-label::after{content:'';flex:1;height:0;border-top:2px dashed var(--ink-3)}
+
+/* строки / сетки */
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.spread{display:flex;justify-content:space-between;gap:8px;text-align:center}
+.spread>div{flex:1}
+.spread .ic{width:30px;height:30px;margin:0 auto 5px;image-rendering:pixelated}
+.spread b{font-size:11px;display:block}
+.spread span{font-size:6.5px;color:var(--ink-3);line-height:1.8}
+
+/* прогресс-бар — чёрный пиксельный */
+.bar{height:14px;border:var(--bw) solid var(--ink);background:var(--card-2);
+  position:relative;overflow:hidden;margin:8px 0;border-radius:3px}
+.bar i{display:block;height:100%;width:0;border-radius:0;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 7px,var(--ink-2) 7px 10px);
+  transition:width .7s steps(14)}
+.bar.acc i{background:repeating-linear-gradient(90deg,var(--acc) 0 7px,var(--acc-d) 7px 10px)}
+.bar-label{display:flex;justify-content:space-between;font-size:7px;margin-top:7px;color:var(--ink-2);gap:8px;flex-wrap:wrap}
+.pix-num{font-size:7px}
+
+/* ── ГЕРОЙ ── */
+.greet{margin:0 2px 14px}
+.greet .hello{font-size:8px;color:var(--ink-3);letter-spacing:.5px}
+.greet .name{font-size:13px;font-weight:400;letter-spacing:.3px;line-height:1.7;margin-top:6px}
+.hero-stage{position:relative;text-align:center;padding:4px 0 2px}
+.hero-stage .himg{width:150px;height:150px;position:relative;display:inline-block;animation:floaty 3.5s steps(20) infinite}
+.hero-stage .himg>img:first-child{width:100%;height:100%;image-rendering:pixelated}
+.hero-stage .layer{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated}
+.bubble{background:var(--card);color:var(--ink);border:var(--bw) solid var(--ink);border-radius:var(--r);
+  padding:11px 13px;font-size:8px;line-height:2;display:inline-block;position:relative;margin-bottom:16px;
+  box-shadow:var(--sh-sm)}
+.bubble::after{content:'';position:absolute;bottom:-9px;left:50%;transform:translateX(-50%) rotate(45deg);
+  width:14px;height:14px;background:var(--card);border-right:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink)}
+
+/* пиксельная сцена двора под героем */
+.scene-stage{position:relative;border:var(--bw) solid var(--ink);border-radius:var(--r);
+  background:var(--card-2);overflow:hidden;margin:2px 0 14px;box-shadow:var(--sh-sm)}
+.scene-stage>img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.scene-stage .himg{position:absolute;z-index:2;width:108px;height:108px;left:27%;bottom:14px;margin:0;display:block}
+.scene-stage .himg>img:first-child{width:100%;height:100%;image-rendering:pixelated;filter:drop-shadow(0 4px 0 rgba(0,0,0,.25))}
+.scene-stage .himg .layer{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated}
+.scene-stage .bubble{position:relative;z-index:3;display:block;margin:14px auto 0;max-width:88%;text-align:center}
+.scene-stage{height:340px}
+.scene-stage .bubble{position:absolute;z-index:3;top:16px;left:6%;right:6%;margin:0}
+/* оживление сцены */
+.scene-stage .cloud{position:absolute;z-index:1;image-rendering:pixelated;opacity:.95;animation:cloudrift linear infinite}
+.scene-stage .cloud.c1{width:64px;top:14px;left:-30%;animation-duration:26s}
+.scene-stage .cloud.c2{width:46px;top:38px;left:-40%;animation-duration:38s;animation-delay:-12s;opacity:.8}
+@keyframes cloudrift{from{transform:translateX(-40px)}to{transform:translateX(460px)}}
+.scene-stage .bird{position:absolute;z-index:1;width:14px;image-rendering:pixelated;animation:birdfly 19s linear infinite}
+.scene-stage .bird.b1{top:30px;left:-10%;animation-duration:21s}
+.scene-stage .bird.b2{top:52px;left:-10%;animation-duration:27s;animation-delay:-14s;width:11px}
+@keyframes birdfly{0%{transform:translate(0,0)}25%{transform:translate(110px,-8px)}50%{transform:translate(220px,4px)}75%{transform:translate(330px,-6px)}100%{transform:translate(440px,0)}}
+.scene-stage .himg img:first-child{animation:herobob 2.2s steps(2,end) infinite}
+@keyframes herobob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+#heroBubble{animation:bubblepop 30s steps(1,end) infinite}
+@keyframes bubblepop{0%,93%{opacity:1}95%,99%{opacity:.85}100%{opacity:1}}
+.coin-bump{animation:coinbump .35s steps(3)}
+@keyframes coinbump{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+.empty-note{border:var(--bw) dashed var(--ink-3);border-radius:var(--r);padding:22px 16px;text-align:center;
+  font-size:9px;line-height:2;color:var(--ink-2);margin:10px 0}
+.empty-note img{image-rendering:pixelated;width:40px;display:block;margin:0 auto 10px;opacity:.85}
+
+/* быстрые действия */
+.hero-cta{display:flex;gap:10px;margin-top:12px}
+.hero-cta .btn{flex:1;font-size:7px;padding:11px 6px;flex-direction:column;gap:6px;min-height:64px}
+.hero-cta .btn img{width:24px;height:24px}
+
+/* ── СПИСКИ / ПУНКТЫ ── */
+.item{display:flex;align-items:center;gap:12px;padding:11px;border:var(--bw) solid var(--ink);
+  background:var(--card);margin-bottom:12px;cursor:pointer;border-radius:var(--r);
+  box-shadow:var(--sh-sm);transition:transform .06s steps(2);animation:pop .25s steps(4) both}
+.item:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.item .ic{width:44px;height:44px;flex:0 0 44px;border-radius:var(--r);background:var(--card-2);
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--ink)}
+.item .ic img{width:30px;height:30px;image-rendering:pixelated}
+.item .body{flex:1;min-width:0}
+.item .t{font-size:9px;margin-bottom:6px;line-height:1.7;letter-spacing:.2px}
+.item .meta{display:flex;gap:9px;font-size:6.8px;color:var(--ink-2);flex-wrap:wrap;align-items:center;line-height:1.8}
+.item .meta .g{color:var(--acc-d);display:inline-flex;align-items:center;gap:3px;font-size:6.8px}
+.item .open{font-size:7.5px;border:var(--bw) solid var(--ink);border-radius:var(--r);padding:9px 11px;
+  background:var(--ink);color:var(--paper);white-space:nowrap;flex-shrink:0;box-shadow:2px 2px 0 var(--ink-2);transition:transform .06s}
+.item:active .open{transform:translate(1px,1px)}
+.item.done{opacity:.7}
+.item.done .ic{background:#e4ebdf;border-color:var(--ink)}
+.item.done .open{background:var(--card);color:var(--ink)}
+.item.done .t{text-decoration:line-through;text-decoration-thickness:2px}
+
+.chips{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px}
+.chips::-webkit-scrollbar{display:none}
+.chip{font-family:var(--pix);font-size:7.5px;letter-spacing:.3px;border:var(--bw) solid var(--ink);background:var(--card);
+  color:var(--ink-2);padding:10px 14px;white-space:nowrap;cursor:pointer;border-radius:var(--r);
+  box-shadow:var(--sh-sm);transition:transform .06s;flex-shrink:0}
+.chip:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.chip.on{background:var(--ink);color:var(--paper)}
+.chip img{width:16px;height:16px;vertical-align:middle;margin-right:5px;image-rendering:pixelated}
+
+/* ── КАРТА ── */
+.map-wrap{position:relative;height:58vh;border:var(--bw) solid var(--ink);overflow:hidden;
+  background:var(--card-2);box-shadow:var(--sh);border-radius:var(--r)}
+#ymap{position:absolute;inset:0;filter:grayscale(1) contrast(1.18) brightness(1.04)}
+.map-fallback{position:absolute;inset:0;background:url('assets/scene_city.png') center/cover}
+.marker{position:absolute;width:34px;height:44px;transform:translate(-50%,-100%);cursor:pointer;z-index:5;transition:transform .1s}
+.marker:active{transform:translate(-50%,-100%) scale(1.15)}
+.marker img{width:100%;height:100%;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.35));image-rendering:pixelated}
+.marker.pulse::after{content:'';position:absolute;left:50%;bottom:-3px;width:12px;height:5px;background:rgba(0,0,0,.3);border-radius:50%;transform:translateX(-50%)}
+.map-zoom{position:absolute;right:12px;bottom:84px;display:flex;flex-direction:column;gap:8px;z-index:8}
+.map-zoom button{width:42px;height:42px;font-size:18px;border:var(--bw) solid var(--ink);
+  background:var(--card);color:var(--ink);cursor:pointer;border-radius:var(--r);box-shadow:var(--sh-sm);transition:transform .06s}
+.map-zoom button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.map-add{position:absolute;right:12px;bottom:14px;z-index:8;width:50px;height:50px;border-radius:var(--r);
+  border:var(--bw) solid var(--ink);background:var(--acc);box-shadow:var(--sh-sm);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:transform .06s}
+.map-add:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.map-add img{width:26px;height:26px;image-rendering:pixelated}
+.map-legend{display:flex;gap:14px;margin-top:14px;font-size:7px;flex-wrap:wrap;color:var(--ink-2);line-height:1.8}
+.map-legend span{display:inline-flex;align-items:center;gap:6px}
+.map-legend img{width:16px;height:22px;image-rendering:pixelated}
+
+/* ── БЕЙДЖИ ── */
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center}
+.badges .b{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.badges .b img{width:100%;max-width:56px;image-rendering:pixelated;filter:grayscale(1) opacity(.25);transition:transform .1s,filter .3s}
+.badges .b:active img{transform:scale(.9)}
+.badges .b.got img{filter:none}
+.badges span{font-size:6px;color:var(--ink-3);line-height:1.6}
+.badges .b.got span{color:var(--ink)}
+
+/* ── ГАРДЕРОБ ── */
+.closet{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.closet button{background:var(--card);border:var(--bw) solid var(--ink);padding:8px;cursor:pointer;
+  border-radius:var(--r);box-shadow:var(--sh-sm);position:relative;transition:transform .06s}
+.closet button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.closet button img{width:100%;image-rendering:pixelated}
+.closet button.sel{background:var(--acc)}
+/* ── ИНВЕНТАРЬ ── */
+.invgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:10px 0}
+.slot{background:var(--card);border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:9px 6px 7px;text-align:center;position:relative}
+.slot img{width:62px;height:62px;object-fit:contain;image-rendering:pixelated}
+.slot .nm{font-size:6.5px;line-height:1.5;margin-top:6px;display:block;letter-spacing:.5px}
+.slot .qd{font-size:6px;color:#7a7468;margin-top:3px;display:block;line-height:1.5}
+.slot.locked{background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+.slot.locked .qm{font-size:30px;line-height:62px;display:block;color:#bdb6a8}
+.slot.locked .nm{color:#bdb6a8}
+.slot .nb{position:absolute;top:-9px;left:-7px;background:var(--acc);border:2px solid var(--ink);
+  font-size:6px;padding:2px 4px;box-shadow:2px 2px 0 var(--ink);letter-spacing:.5px}
+.invstats{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
+.invstats span{font-size:6.5px;background:var(--paper);border:2px solid var(--ink);padding:4px 6px;box-shadow:2px 2px 0 var(--ink)}
+.invquote{background:var(--ink);color:var(--paper);font-size:7px;line-height:1.8;padding:10px 12px;margin-top:12px;text-align:center;box-shadow:4px 4px 0 var(--acc)}
+.closet button.sel::after{content:'✓';position:absolute;top:-8px;right:-8px;background:var(--ink);color:var(--paper);
+  font-size:9px;width:20px;height:20px;border-radius:var(--r);border:2px solid var(--paper);
+  display:flex;align-items:center;justify-content:center}
+
+/* ── ЧАТ ── */
+.chatbox{display:flex;flex-direction:column;gap:13px;margin-bottom:12px}
+.msg{display:flex;gap:9px;align-items:flex-end;animation:pop .2s steps(4) both}
+.msg .av{width:38px;height:38px;flex:0 0 38px;border-radius:var(--r);background:var(--card-2);
+  border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;padding:3px}
+.msg .av img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.msg .bubble2{border:var(--bw) solid var(--ink);padding:10px 12px;font-size:8px;max-width:78%;
+  background:var(--card);border-radius:var(--r);box-shadow:var(--sh-sm);line-height:1.9}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.msg.me .av{background:var(--card-2)}
+.msg.me .bubble2{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.quick{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+.quick .chip{font-size:7px}
+.attach{display:flex;gap:10px}
+.attach .btn{flex:1;font-size:7.5px;min-height:48px;flex-direction:column;gap:6px}
+.attach .btn img{width:22px;height:22px}
+.tool{display:flex;align-items:center;gap:11px;padding:11px;border:var(--bw) solid var(--ink);
+  margin-bottom:9px;background:var(--card);border-radius:var(--r);box-shadow:var(--sh-sm)}
+.tool img{width:28px;height:28px;image-rendering:pixelated}
+.tool .nm{font-size:8.5px;margin-bottom:4px}
+.tool .ds{font-size:6.5px;color:var(--ink-3);line-height:1.7}
+.tool .ck{margin-left:auto;width:26px;height:26px;border:var(--bw) solid var(--ink);border-radius:4px;display:flex;
+  align-items:center;justify-content:center;font-size:12px;cursor:pointer;background:var(--card);color:transparent;flex:0 0 26px}
+.tool.checked{background:var(--card-2)}
+.tool.checked .ck{background:var(--ink);color:var(--paper)}
+.tool.checked{opacity:.8}
+
+/* ── МОДАЛКИ ── */
+.modal{position:absolute;inset:0;z-index:100;background:rgba(20,20,20,.45);display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:var(--paper);width:100%;max-width:480px;max-height:92%;overflow-y:auto;
+  border:var(--bw) solid var(--ink);border-bottom:none;border-radius:14px 14px 0 0;
+  padding:18px 16px calc(26px + env(safe-area-inset-bottom));
+  animation:up .3s steps(7);scrollbar-width:none;box-shadow:0 -8px 0 rgba(0,0,0,.25)}
+.sheet::-webkit-scrollbar{display:none}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet .st{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px}
+.sheet .st b{font-size:10px;display:flex;align-items:center;gap:9px;letter-spacing:.3px;line-height:1.6}
+.sheet .st img.x{width:30px;height:30px;cursor:pointer;background:var(--card);border:var(--bw) solid var(--ink);
+  border-radius:var(--r);padding:4px;image-rendering:pixelated;box-shadow:var(--sh-sm)}
+input,textarea,select{font-family:var(--pix);font-size:8px;width:100%;border:var(--bw) solid var(--ink);
+  background:var(--card);color:var(--ink);padding:13px 14px;margin-bottom:12px;resize:vertical;border-radius:var(--r);line-height:1.8}
+input:focus,textarea:focus{outline:none;background:var(--paper)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+label.f{font-size:7px;display:block;margin-bottom:7px;color:var(--ink-2);letter-spacing:.5px}
+
+/* ── ИИ-КНОПКА ── */
+#aiFab{position:absolute;right:16px;bottom:calc(90px + env(safe-area-inset-bottom));width:56px;height:56px;z-index:40;cursor:pointer;
+  background:var(--card);border:var(--bw) solid var(--ink);border-radius:var(--r);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;animation:bob 2.4s steps(16) infinite;transition:transform .06s}
+#aiFab:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+#aiFab img{width:42px;height:42px;image-rendering:pixelated}
+#aiFab .dot{position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:var(--acc);
+  border:var(--bw) solid var(--ink);border-radius:50%;font-size:8px;color:#241a0e;
+  display:flex;align-items:center;justify-content:center}
+
+/* ── НИЖНЯЯ НАВИГАЦИЯ ── */
+nav{position:absolute;bottom:0;left:0;right:0;z-index:50;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  background:var(--card);border-top:var(--bw) solid var(--ink);display:flex}
+nav button{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;font-family:var(--pix);font-size:6.3px;
+  color:var(--ink-3);padding:7px 2px;border-radius:var(--r);position:relative;transition:color .15s;letter-spacing:.3px}
+nav button img{width:26px;height:26px;opacity:.55;transition:all .15s steps(3);image-rendering:pixelated}
+nav button.on{color:var(--ink)}
+nav button.on img{opacity:1;transform:translateY(-2px)}
+nav button.on::before{content:'';position:absolute;top:0;width:24px;height:4px;background:var(--ink)}
+
+/* ── СУД ── */
+.dispute{border:var(--bw) solid var(--ink);padding:13px;margin-bottom:12px;background:var(--card);
+  border-radius:var(--r);box-shadow:var(--sh-sm)}
+.dispute .who{display:flex;align-items:center;gap:8px;font-size:6.8px;color:var(--ink-3);
+  margin-bottom:9px;letter-spacing:.5px}
+.dispute .who img{width:22px;height:22px;image-rendering:pixelated}
+.votes{display:flex;gap:9px;margin-top:12px}
+.votes button{flex:1;font-family:var(--pix);font-size:8px;padding:12px 8px;border:var(--bw) solid var(--ink);
+  background:var(--card);color:var(--ink);cursor:pointer;border-radius:var(--r);box-shadow:var(--sh-sm);transition:transform .06s;line-height:1.6}
+.votes button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.votes button.yes.on{background:var(--ink);color:var(--paper)}
+.votes button.no.on{background:var(--acc);color:#241a0e}
+.vbar{height:12px;border:2px solid var(--ink);display:flex;margin-top:11px;overflow:hidden;background:var(--card-2);border-radius:3px}
+.vbar i{display:block;height:100%;transition:width .5s steps(10)}
+.vbar .y{background:var(--ink)}.vbar .n{background:var(--acc)}
+
+/* ── ГРАФИК ── */
+.chart{display:flex;align-items:flex-end;gap:7px;height:120px;border-bottom:var(--bw) solid var(--ink);
+  border-left:var(--bw) solid var(--ink);padding:10px 7px 0}
+.chart i{flex:1;background:repeating-linear-gradient(180deg,var(--ink) 0 4px,var(--ink-2) 4px 7px);position:relative;transition:height .5s steps(10)}
+.chart i::after{content:attr(d);position:absolute;bottom:-19px;left:0;right:0;text-align:center;
+  font-size:6.5px;color:var(--ink-3)}
+
+/* ── QR / СТИКЕР ── */
+.qrbox{display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 0}
+#qrCanvas{border:var(--bw) solid var(--ink);background:#fff;width:150px;height:150px;border-radius:var(--r);image-rendering:pixelated;box-shadow:var(--sh-sm)}
+.sticker-img{width:150px;image-rendering:pixelated;filter:drop-shadow(4px 5px 0 rgba(20,20,20,.25))}
+
+/* ── ЛЕНТА ── */
+.post{border:var(--bw) solid var(--ink);padding:13px;margin-bottom:12px;background:var(--card);
+  border-radius:var(--r);box-shadow:var(--sh-sm)}
+.post .ph{display:flex;align-items:center;gap:9px;font-size:7px;margin-bottom:10px;color:var(--ink-3);line-height:1.7}
+.post .ph img{width:32px;height:32px;image-rendering:pixelated;background:var(--card-2);border:2px solid var(--ink);border-radius:var(--r);padding:3px}
+.post .ph .nick{color:var(--ink)}
+.post .pic{display:flex;gap:12px;align-items:center;font-size:8px;line-height:1.8}
+.post .pic img.big{width:52px;height:52px;image-rendering:pixelated;background:var(--card-2);
+  border:2px solid var(--ink);border-radius:var(--r);padding:5px;flex-shrink:0}
+.post .acts{display:flex;gap:16px;margin-top:11px;font-size:7px;color:var(--ink-2);cursor:default}
+.post .acts span{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+
+/* ── ДЕНЬ РЕСУРСА ── */
+#resDay{position:absolute;inset:0;z-index:300;background:var(--ink);color:var(--paper);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  padding:30px 24px;text-align:center}
+#resDay.on{display:flex;animation:screenIn .4s steps(6)}
+.res-icons{display:flex;gap:26px}
+.res-icons div{text-align:center;font-size:7px;line-height:2}
+.res-icons img{width:60px;height:60px;image-rendering:pixelated;animation:drop 1.6s steps(12) infinite;
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
+.res-icons div:nth-child(2) img{animation-delay:.22s}
+.res-icons div:nth-child(3) img{animation-delay:.44s}
+@keyframes drop{0%,100%{transform:translateY(0)}50%{transform:translateY(12px)}}
+
+/* ── ТОСТ ── */
+.toast{position:absolute;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);z-index:400;
+  background:var(--ink);color:var(--paper);font-size:7.5px;line-height:1.8;padding:13px 16px;border-radius:var(--r);
+  border:var(--bw) solid var(--acc);box-shadow:var(--sh);opacity:0;transition:all .25s steps(5);
+  pointer-events:none;text-align:center;max-width:88%}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── УТИЛИТЫ ── */
+.tiny{font-size:7px;color:var(--ink-2);line-height:1.8}
+.center{text-align:center}
+.mt8{margin-top:8px}.mt16{margin-top:16px}
+.coinline{display:flex;align-items:center;gap:8px;font-size:12px}
+.coinline img{width:24px;height:24px;image-rendering:pixelated}
+
+/* ── ЖИВОТНЫЕ / АГЕНТЫ ── */
+.pet-card{display:flex;align-items:center;gap:12px;padding:12px;border:var(--bw) solid var(--ink);
+  background:var(--card);border-radius:var(--r);margin-bottom:11px;box-shadow:var(--sh-sm);transition:transform .06s}
+.pet-card:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.pet-card .pic{width:54px;height:54px;flex:0 0 54px;background:var(--card-2);border:2px solid var(--ink);
+  border-radius:var(--r);display:flex;align-items:center;justify-content:center;padding:5px}
+.pet-card .pic img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.pet-card .info{flex:1;min-width:0}
+.pet-card .info .t{font-size:8.5px;line-height:1.7}
+.pet-card .info .d{font-size:6.8px;color:var(--ink-3);margin-top:4px;line-height:1.7}
+.pet-card .info .xp{font-size:6.5px;color:var(--acc-d);margin-top:6px;line-height:1.8}
+.pet-card .open{font-size:7px;font-weight:400;border:var(--bw) solid var(--ink);border-radius:var(--r);
+  padding:9px 12px;background:var(--ink);color:var(--paper);white-space:nowrap;box-shadow:2px 2px 0 var(--ink-2)}
+.agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.agent{background:var(--card);border:var(--bw) solid var(--ink);border-radius:var(--r);padding:12px 6px;
+  text-align:center;cursor:pointer;box-shadow:var(--sh-sm);transition:transform .06s}
+.agent:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.agent img{width:38px;height:38px;image-rendering:pixelated;margin-bottom:8px}
+.agent .an{font-size:7px;line-height:1.6}
+.agent .ad{font-size:5.8px;color:var(--ink-3);margin-top:4px;line-height:1.6}
+.city-res{display:flex;gap:9px}
+.city-res>div{flex:1;background:var(--card-2);border:var(--bw) solid var(--ink);border-radius:var(--r);
+  padding:11px 4px;text-align:center;box-shadow:var(--sh-sm)}
+.city-res img{width:26px;height:26px;image-rendering:pixelated;margin-bottom:6px}
+.city-res b{display:block;font-size:9px}
+.city-res span{font-size:6px;color:var(--ink-3);line-height:1.8}
+main{overflow-wrap:break-word;word-break:break-word}
+.item,.post,.pet-card,.dispute{min-width:0}
+
+@media (max-width:360px){
+  body{font-size:8.5px}
+  .h-title{font-size:10px}
+  nav button{font-size:5.8px}
+  .spread b{font-size:9px}
+  .agent-grid{grid-template-columns:repeat(2,1fr)}
+  .greet .name{font-size:11px}
+}
+/* ═══════════ E-INK OVERRIDE (по референсу: точечные рамки, серые фаски) ═══════════ */
+body{background:var(--paper);color:var(--ink)}
+/* рамки-пунктир на панелях */
+.card,.sheet,.tool,.slot,.item,.bubble,.bubble2,.post,.sticker,
+.modal .sheet,.qrbox,.closet button,.invquote{
+  border:var(--bdot) !important;
+  border-radius:var(--r) !important;
+}
+.card{box-shadow:var(--sh-sm) !important}
+.sheet{background:var(--paper) !important;box-shadow:none !important;border:4px dotted var(--line-dk) !important;border-radius:8px !important}
+.modal{background:rgba(71,67,61,.34)}
+/* кнопки: светло-серая заливка + тёмная фаска снизу */
+.btn{background:var(--card);color:var(--ink);border:3px solid var(--line-dk) !important;
+  border-radius:var(--r) !important;box-shadow:var(--bev) !important;font-weight:700}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line-dk) !important}
+.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink) !important}
+.btn.acc{background:var(--acc);color:var(--ink);border-color:var(--line-dk) !important}
+.btn.ghost{background:var(--card)}
+/* чипы/вкладки: неактивные — точечные серые, активная — тёмная сплошная */
+.chip{border:var(--bdot) !important;background:var(--paper);color:var(--ink-2);border-radius:var(--r);box-shadow:none}
+.chip.on{background:var(--ink);color:var(--paper);border:3px solid var(--ink) !important}
+/* поля ввода — точечная рамка */
+input,textarea{border:var(--bdot) !important;border-radius:var(--r) !important;background:var(--paper) !important;color:var(--ink)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+/* тени — серые, не чёрные */
+.item,.slot,.tool,.bubble,.bubble2,.post,.closet button{box-shadow:var(--sh-sm) !important}
+.item:active,.closet button:active{box-shadow:1px 1px 0 var(--line) !important}
+.slot.locked{background:var(--card-2);box-shadow:2px 2px 0 var(--line) !important}
+/* заголовки модалок и тексты — тёмно-серые */
+h1,h2,h3,b,strong,.st b{color:var(--ink)}
+/* точечные иконки-бейджи */
+.ui-dot, .x{border-radius:var(--r)}
+/* статус-бар/шапка — без чёрных линий */
+#nav button{border-top:var(--bdot);color:var(--ink-2)}
+#nav button.on{color:var(--ink)}
+/* убрать резкие чёрные 1-бит тени у картинок-аватарок на точечный контур */
+.tool .ck,.item .ic{border:var(--bdot)}
+/* полоски прогресса — серые */
+.bar,.bar i{border-radius:var(--r)}
+/* акцентная подсветка (бывший беж) — тёплый серый */
+.bar i,.acc-fill{background:var(--line-dk)}
+/* лендинг — на бумаге */
+#landing{background:var(--paper);color:var(--ink) !important}
+#landing .land-tag{background:var(--card);color:var(--ink);border:var(--bdot-dk) !important;box-shadow:4px 4px 0 var(--line)}
+#landing .land-tag b{color:var(--line-dk)}
+#landing .land-sub{color:var(--ink-3) !important}
+.land-lang{border-color:var(--line-dk) !important;color:var(--ink) !important;box-shadow:3px 3px 0 var(--line) !important}
+/* тёмные пузыри/панели оставляем, но текст в них бумажный */
+.msg.me .bubble2,.invquote{background:var(--ink-2) !important}
+
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<div class="app">
+
+  <!-- ══════════ ЛЕНДИНГ ══════════ -->
+  <div id="landing">
+    <img class="land-logo pix" src="assets/logo.png" alt="21">
+    <div class="land-tag" data-en="RPG ECOSYSTEM<br>OF SELF-SUFFICIENT LIFE<br><b>a city we fix ourselves</b>">
+      РПГ-ЭКОСИСТЕМА<br>АВТОНОМНОЙ ЖИЗНИ<br>
+      <b>город, который мы чиним сами</b>
+    </div>
+    <div class="land-enter">
+      <button class="btn dark block" onclick="enterApp()">
+        <img class="pix" src="assets/ui_tg.png" alt="">ВОЙТИ
+      </button>
+      <button class="land-lang" onclick="toggleLang()" id="langBtnLand">🌐 RU</button>
+      <span class="land-sub" data-en="every 21st is a cleanup day">каждое 21-е число — субботник</span>
+    </div>
+  </div>
+
+  <!-- ══════════ СТАТУС-БАР ══════════ -->
+  <div class="statusbar">
+    <span class="sb-time">21:21</span>
+    <span class="sb-icons">
+      <span class="sb-sig"><i></i><i></i><i></i><i></i></span>
+      <span class="sb-wifi"><i></i><i></i><i></i></span>
+      <span class="sb-batt"><i></i></span>
+    </span>
+  </div>
+
+  <!-- ══════════ ШАПКА ══════════ -->
+  <header>
+    <div class="stat">
+      <img class="pix" src="assets/ui_heart.png" alt="карма"><b id="hKarma">0</b>
+    </div>
+    <div class="h-title" id="hTitle">21</div>
+    <div class="h-ico">
+      <img class="pix" src="assets/ui_bell.png" alt="события" onclick="checkResourceDay(true)">
+      <img class="pix" src="assets/ui_lock.png" alt="админ" onclick="openAdmin()" style="cursor:pointer">
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ── ГЛАВНАЯ ── -->
+    <section class="screen on" id="s-home">
+      <div class="greet">
+        <div class="hello">СОСЕД · РАЙОН ЦВЕТОЧНЫЙ</div>
+        <div class="name">Привет, <span class="pix">21</span> — герой двора</div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div class="spread">
+          <div><img class="ic pix" src="assets/ui_heart.png"><b id="hpKarma">0</b><span>КАРМА ◉</span></div>
+          <div><img class="ic pix" src="assets/ui_star.png"><b id="hpXp">0</b><span>XP ⚡</span></div>
+          <div><img class="ic pix" src="assets/ui_coin.png"><b id="hpCoin">0</b><span>КОШЕЛЁК ◆</span></div>
+          <div><img class="ic pix" src="assets/ui_trophy.png"><b id="hpLvl">1</b><span>УРОВЕНЬ</span></div>
+        </div>
+        <div class="bar mt8"><i id="lvlBar" style="width:0%"></i></div>
+        <div class="bar-label"><span id="lvlName">УРОВЕНЬ 1 · НОВИЧОК</span><span id="lvlXp" class="pix-num">0 / 100</span></div>
+      </div>
+
+      <div class="card" style="padding:12px">
+        <div class="scene-stage">
+          <img class="bg pix" src="assets/scene_night.gif" alt="" style="image-rendering:pixelated">
+          <div class="bubble" id="heroBubble">РАЙОН ЦВЕТОЧНЫЙ<br>ЖИВЁМ ЛУЧШЕ КАЖДЫЙ ДЕНЬ</div>
+          <div class="himg">
+            <img class="pix" src="assets/hero.png" alt="герой">
+            <img class="layer pix" id="hatLayer" src="assets/hat_cap.png" style="opacity:0" alt="">
+            <img class="layer pix" id="accLayer" src="assets/acc_glasses.png" style="opacity:0" alt="">
+          </div>
+        </div>
+        <button class="btn block acc" onclick="go('quests')">
+          <img class="pix" src="assets/nav_sword.png" alt="">КВЕСТЫ СЕГОДНЯ · <b id="activeCount">0</b>
+        </button>
+        <div class="hero-cta">
+          <button class="btn ghost" onclick="go('map')"><img class="pix" src="assets/nav_map.png">КАРТА</button>
+          <button class="btn ghost" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">БЮДЖЕТ</button>
+          <button class="btn ghost" onclick="openCourt()"><img class="pix" src="assets/ui_vote.png">СУД</button>
+        </div>
+      </div>
+
+      <div class="sec-label"><img class="pix" src="assets/ui_paw.png" style="width:20px;height:20px">ТЕ, КТО РЯДОМ</div>
+      <div class="card" style="padding:14px">
+        <div id="petList"></div>
+      </div>
+
+      <div class="sec-label"><img class="pix" src="assets/e_drop.png" style="width:20px;height:20px">РЕСУРСЫ ГОРОДА</div>
+      <div class="city-res">
+        <div><img class="pix" src="assets/e_drop.png"><b>82%</b><span>ВОДА</span></div>
+        <div><img class="pix" src="assets/e_apple.png"><b>64%</b><span>ЕДА</span></div>
+        <div><img class="pix" src="assets/e_bolt.png"><b>91%</b><span>ЭНЕРГИЯ</span></div>
+      </div>
+
+      <div class="sec-label"><img class="pix" src="assets/ui_chat.png" style="width:20px;height:20px">ЛЕНТА РАЙОНА</div>
+      <div class="card" style="padding:14px">
+        <div id="feedList"></div>
+      </div>
+
+      <div class="card" style="border-color:var(--acc-d);padding:16px">
+        <h3><img class="pix" src="assets/ui_calendar.png">21-Е ЧИСЛО — ДЕНЬ РЕСУРСА</h3>
+        <div class="row between">
+          <span class="tiny" id="resCountdown">до распределения: —</span>
+          <button class="btn small acc" onclick="checkResourceDay(true)">⟡ ОТКРЫТЬ</button>
+        </div>
+      </div>
+      <button class="btn block ghost" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+    </section>
+
+    <!-- ── КАРТА ── -->
+    <section class="screen" id="s-map">
+      <div class="map-wrap">
+        <div class="map-fallback" id="mapFallback"></div>
+        <div id="ymap"></div>
+        <div id="mapMarkers"></div>
+        <div class="map-zoom">
+          <button onclick="mapZoom(1)">+</button>
+          <button onclick="mapZoom(-1)">−</button>
+        </div>
+        <button class="map-add" onclick="addMapPoint()"><img class="pix" src="assets/ui_plus.png" alt="добавить"></button>
+      </div>
+      <div class="map-legend">
+        <span><img class="pix" src="assets/mk_problem.png">ПРОБЛЕМА</span>
+        <span><img class="pix" src="assets/mk_quest.png">КВЕСТ</span>
+        <span><img class="pix" src="assets/mk_project.png">ПРОЕКТ</span>
+        <span><img class="pix" src="assets/mk_done.png">ВЫПОЛНЕНО</span>
+      </div>
+      <div class="card mt16">
+        <h3><img class="pix" src="assets/ui_vote.png">ТОЧКИ РАЙОНА</h3>
+        <div id="mapPointList"></div>
+      </div>
+      <button class="btn block" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+    </section>
+
+    <!-- ── КВЕСТЫ ── -->
+    <section class="screen" id="s-quests">
+      <div class="chips">
+        <button class="chip on" data-qf="all" onclick="qFilter('all',this)">ВСЕ</button>
+        <button class="chip" data-qf="open" onclick="qFilter('open',this)">ДОСТУПНЫЕ</button>
+        <button class="chip" data-qf="mine" onclick="qFilter('mine',this)">МОИ</button>
+        <button class="chip" data-qf="done" onclick="qFilter('done',this)">ВЫПОЛНЕНЫ</button>
+      </div>
+      <div id="questList"></div>
+      <button class="btn block acc" onclick="openCourt()"><img class="pix" src="assets/ui_vote.png">СУД СООБЩЕСТВА</button>
+      <button class="btn block mt8" onclick="openForum()"><img class="pix" src="assets/ui_chat.png">ФОРУМ РАЙОНА</button>
+      <button class="btn block mt8" onclick="openCrowd()"><img class="pix" src="assets/ui_coin.png">БЮДЖЕТ</button>
+      <button class="btn block ghost mt8" onclick="openModal('volModal')"><img class="pix" src="assets/ui_paw.png">СТАТЬ ВОЛОНТЁРОМ 21</button>
+      <button class="btn block mt8" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+    </section>
+
+    <!-- ── ЭНЦИКЛОПЕДИЯ ── -->
+    <section class="screen" id="s-wiki">
+      <div class="greet" style="margin-bottom:14px">
+        <div class="hello">ЗНАНИЯ РАЙОНА</div>
+        <div class="name" style="font-size:22px">Цифровые специалисты 21</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <div class="agent-grid" id="agentGrid"></div>
+      </div>
+      <div class="sec-label"><img class="pix" src="assets/nav_book.png" style="width:20px;height:20px">БАЗА ЗНАНИЙ</div>
+      <div class="chips" id="wikiChips"></div>
+      <div id="wikiList"></div>
+      <button class="btn block ghost mt8" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+    </section>
+
+    <!-- ── ПРОФИЛЬ ── -->
+    <section class="screen" id="s-profile">
+      <div class="card">
+        <div class="row" style="gap:16px">
+          <div style="width:86px;height:86px;flex:0 0 86px;position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px">
+            <img class="pix" src="assets/hero.png" style="width:100%;height:100%">
+            <img class="layer pix" id="hatLayer2" src="assets/hat_cap.png" style="opacity:0">
+            <img class="layer pix" id="accLayer2" src="assets/acc_glasses.png" style="opacity:0">
+          </div>
+          <div style="flex:1">
+            <div style="font-size:19px;font-weight:900;letter-spacing:-.3px">АВТОНОМ_21</div>
+            <div class="tiny mt8" style="font-size:13px">РЕПУТАЦИЯ ◉ <b id="pfKarma">0</b></div>
+            <div class="tiny" style="font-size:13px">КАРМА +<b id="pfXp">0</b></div>
+            <div class="bar" style="margin-top:8px"><i id="pfBar" style="width:0%"></i></div>
+            <div class="bar-label"><span>УРОВЕНЬ <b id="pfLvl">1</b></span><span id="pfXpTxt" class="pix-num">0/100</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:14px">
+        <div class="spread">
+          <div onclick="openCustom()" style="cursor:pointer"><img class="ic pix" src="assets/hat_crown.png"><span>ГАРДЕРОБ</span></div>
+          <div onclick="openInv()" style="cursor:pointer"><img class="ic pix" src="assets/ar_backpack.png"><span>ИНВЕНТАРЬ</span></div>
+          <div onclick="go('wiki')" style="cursor:pointer"><img class="ic pix" src="assets/nav_book.png"><span>ЗНАНИЯ</span></div>
+          <div onclick="openBadges()" style="cursor:pointer"><img class="ic pix" src="assets/ui_trophy.png"><span>ЗНАЧКИ</span></div>
+          <div onclick="checkResourceDay(true)" style="cursor:pointer"><img class="ic pix" src="assets/ui_calendar.png"><span>СУББОТНИК</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><img class="pix" src="assets/ui_trophy.png">ЗНАЧКИ СКАУТА 21</h3>
+        <div class="badges" id="badgeRow"></div>
+      </div>
+
+      <div class="card">
+        <h3><img class="pix" src="assets/face.png">СТАТИСТИКА РАЙОНА</h3>
+        <div class="spread" id="districtStats"></div>
+      </div>
+
+      <button class="btn block" onclick="toggleTheme()"><img class="pix" src="assets/ui_star.png">ТЁМНАЯ / СВЕТЛАЯ</button>
+      <button class="btn block mt8" id="langBtn" onclick="toggleLang()">🌐 RU</button>
+      <button class="btn block mt8" onclick="openSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+    </section>
+  </main>
+
+  <nav id="nav">
+    <button class="on" data-t="home" onclick="go('home')"><img class="pix" src="assets/nav_home.png">ГЛАВНАЯ</button>
+    <button data-t="map" onclick="go('map')"><img class="pix" src="assets/nav_map.png">КАРТА</button>
+    <button data-t="quests" onclick="go('quests')"><img class="pix" src="assets/nav_sword.png">КВЕСТЫ</button>
+    <button data-t="wiki" onclick="go('wiki')"><img class="pix" src="assets/nav_book.png">ЭНЦИКЛОПЕДИЯ</button>
+    <button data-t="profile" onclick="go('profile')"><img class="pix" src="assets/nav_user.png">ПРОФИЛЬ</button>
+  </nav>
+
+  <!-- ИИ-кнопка -->
+  <div id="aiFab" onclick="openAi()"><img class="pix" src="assets/robot.png"><span class="dot">1</span></div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ══════════ МОДАЛКИ ══════════ -->
+<!-- Квест -->
+<div class="modal" id="questModal"><div class="sheet">
+  <div class="st"><b id="qTitle"><img class="pix" src="assets/q_bench.png" style="width:24px">КВЕСТ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('questModal')"></div>
+  <div id="qStepBar" class="bar"><i style="width:25%"></i></div>
+  <div class="bar-label"><span id="qStepTxt">ШАГ 1 ИЗ 4</span><span id="qReward"></span></div>
+  <div class="chatbox mt16" id="qChat"></div>
+  <div id="qTools"></div>
+  <div class="attach" id="qAttach" style="display:none">
+    <button class="btn" onclick="qPhoto()"><img class="pix" src="assets/ui_camera.png">ФОТО</button>
+    <button class="btn" id="micBtn"><img class="pix" src="assets/ui_mic.png">УДЕРЖИВАЙ</button>
+  </div>
+  <button class="btn block acc mt16" id="qNext" onclick="questNext()">ДАЛЕЕ ▶</button>
+</div></div>
+
+<!-- ИИ -->
+<div class="modal" id="aiModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/robot.png" style="width:28px;height:28px">AI-21</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('aiModal')"></div>
+  <div class="card" style="box-shadow:none;background:var(--surface-2);border-color:transparent;display:flex;gap:14px;align-items:center;padding:16px">
+    <img class="pix" src="assets/robot.png" style="width:56px;height:56px;flex:0 0 56px">
+    <div>
+      <div style="font-size:16px;font-weight:800">Городской ассистент 21</div>
+      <div class="tiny" style="margin-top:3px">Знает про воду, ремонт, квесты, суд и бюджет. Подскажет, как починить район.</div>
+    </div>
+  </div>
+  <div class="chatbox" id="aiChat" style="max-height:44vh;overflow-y:auto;margin-top:8px"></div>
+  <div class="quick" id="aiQuick"></div>
+  <div class="row">
+    <input id="aiInput" placeholder="Спросите о воде, ремонте, квестах…" onkeydown="if(event.key==='Enter')aiSend()">
+    <button class="btn" style="padding:12px;border-radius:14px" onclick="aiSend()"><img class="pix" src="assets/ui_send.png"></button>
+  </div>
+</div></div>
+
+<!-- Суд -->
+<div class="modal" id="courtModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_vote.png" style="width:24px">СУД СООБЩЕСТВА</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('courtModal')"></div>
+  <p class="tiny mb8" style="margin-bottom:10px">разрешаем споры без чиновников · голос соседей — закон</p>
+  <div id="disputeList"></div>
+  <button class="btn block acc" onclick="toast('СПОР ПЕРЕДАН НА ГОЛОСОВАНИЕ ◆')"><img class="pix" src="assets/ui_plus.png">ПОДНЯТЬ ВОПРОС</button>
+</div></div>
+
+<!-- Краудфандинг -->
+<div class="modal" id="crowdModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_coin.png" style="width:24px">БЮДЖЕТ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('crowdModal')"></div>
+  <div class="card" style="box-shadow:none">
+    <div class="row between">
+      <div class="coinline"><img class="pix" src="assets/ui_coin.png"><b id="walletBig">0</b> ◆</div>
+      <button class="btn acc small" onclick="donate(100)">+100 ◆</button>
+    </div>
+  </div>
+  <div id="projectList"></div>
+  <div class="card" style="box-shadow:none;border-color:var(--acc-d)">
+    <h3><img class="pix" src="assets/robot.png">AI-РАСПРЕДЕЛЕНИЕ БЮДЖЕТА</h3>
+    <div id="budgetBars"></div>
+    <button class="btn block mt8" onclick="aiBudget()"><img class="pix" src="assets/robot.png">ПЕРЕСЧИТАТЬ ПО ПРИОРИТЕТАМ</button>
+  </div>
+</div></div>
+
+<!-- Значки -->
+<div class="modal" id="badgeModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_trophy.png" style="width:24px">ЗНАЧКИ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('badgeModal')"></div>
+  <div class="badges" id="badgeAll" style="grid-template-columns:repeat(3,1fr)"></div>
+</div></div>
+
+<!-- Кастомизация -->
+<div class="modal" id="customModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/hat_crown.png" style="width:24px">ГАРДЕРОБ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('customModal')"></div>
+  <h3 style="font-size:8px;margin-bottom:8px">ГОЛОВНОЙ УБОР</h3>
+  <div class="closet" id="hatGrid" style="margin-bottom:14px"></div>
+  <h3 style="font-size:8px;margin-bottom:8px">АКСЕССУАР</h3>
+  <div class="closet" id="accGrid"></div>
+</div></div>
+
+<!-- Инвентарь / артефакты -->
+<div class="modal" id="invModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ar_backpack.png" style="width:24px">ИНВЕНТАРЬ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('invModal')"></div>
+  <p class="tiny center" id="invIntro" style="font-size:7px;line-height:1.7"></p>
+  <div class="invstats" id="invStats"></div>
+  <div class="invgrid" id="invGrid"></div>
+  <div class="invquote" data-en="BE KINDER TO YOURSELF.<br>YOU’RE DOING THE BEST YOU CAN.">БУДЬ ДОБРЕЕ К СЕБЕ.<br>ТЫ ДЕЛАЕШЬ ЛУЧШЕЕ, ЧТО МОЖЕШЬ.</div>
+  <button class="btn block dark mt16" onclick="closeModal('invModal');openReward()"><img class="pix" src="assets/ui_lock.png">ВВЕСТИ КОД НАГРАДЫ</button>
+</div></div>
+
+<!-- Ввод секретного кода награды -->
+<div class="modal" id="rewardModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">СЕКРЕТНЫЙ КОД</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('rewardModal')"></div>
+  <div id="rewardBody"></div>
+</div></div>
+
+<!-- Стикер -->
+<div class="modal" id="stickerModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_qr.png" style="width:24px">СТИКЕР 21</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('stickerModal')"></div>
+  <div class="qrbox">
+    <img class="sticker-img pix" src="assets/sticker.png" alt="стикер">
+    <canvas id="qrCanvas" width="150" height="150"></canvas>
+  </div>
+  <p class="tiny center mt8">поделись приложением с соседями</p>
+  <button class="btn block acc mt16" onclick="downloadSticker()"><img class="pix" src="assets/ui_download.png">СКАЧАТЬ СТИКЕР</button>
+</div></div>
+
+<!-- Админ -->
+<!-- Вход в админку по паролю -->
+<div class="modal" id="adminPassModal"><div class="sheet" style="max-width:340px">
+  <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">ВХОД ДЛЯ АДМИНА</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('adminPassModal')"></div>
+  <p class="tiny center" style="font-size:8px;line-height:1.8;margin-bottom:12px">АДМИН-ПАНЕЛЬ ЗАЩИЩЕНА ПАРОЛЕМ.</p>
+  <input id="adminPass" type="password" placeholder="ПАРОЛЬ" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;text-align:center;letter-spacing:3px">
+  <button class="btn block acc mt8" onclick="adminLogin()"><img class="pix" src="assets/ui_lock.png">ВОЙТИ</button>
+</div></div>
+
+<div class="modal" id="adminModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_lock.png" style="width:24px">АДМИН-ПАНЕЛЬ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('adminModal')"></div>
+  <div class="chips" style="margin-bottom:10px">
+    <button class="chip on" onclick="admTab('quest',this)">ЗАДАНИЕ</button>
+    <button class="chip" onclick="admTab('problem',this)">ПРОБЛЕМА</button>
+    <button class="chip" onclick="admTab('post',this)">ПОСТ</button>
+    <button class="chip" onclick="admTab('reward',this)">НАГРАДА</button>
+    <button class="chip" onclick="admTab('stats',this)">СТАТИСТИКА</button>
+  </div>
+  <div id="admQuest">
+    <label class="f">НАЗВАНИЕ ЗАДАНИЯ</label><input id="aqName" placeholder="ПОЧИНИТЬ КАЧЕЛИ ВО ДВОРЕ">
+    <label class="f">ОПИСАНИЕ ЗАДАНИЯ *</label><textarea id="aqDesc" rows="3" placeholder="ЧТО И ГДЕ СДЕЛАТЬ, ПОДРОБНО"></textarea>
+    <label class="f">КООРДИНАТЫ — ШИРОТА И ДОЛГОТА *</label>
+    <div class="row" style="gap:8px">
+      <input id="aqLat" placeholder="ШИРОТА · 48.78">
+      <input id="aqLng" placeholder="ДОЛГОТА · 44.77">
+    </div>
+    <button class="btn block ghost mt8" onclick="getMyPos()"><img class="pix" src="assets/mk_done.png">ВЗЯТЬ МОИ GPS-КООРДИНАТЫ</button>
+    <label class="f mt16">КАРТИНКА ЗАДАНИЯ (ПРИЛОЖИТЬ ФОТО)</label>
+    <input type="file" id="aqFile" accept="image/*" style="font-size:8px">
+    <img id="aqPrev" style="display:none;max-width:120px;margin:8px 0;image-rendering:pixelated;border:var(--bw) solid var(--ink)">
+    <label class="f mt16">НАГРАДА</label>
+    <div class="row" style="gap:8px">
+      <input id="aqXp" type="number" placeholder="XP · 50" value="50">
+      <input id="aqKarma" type="number" placeholder="КАРМА · 10" value="10">
+    </div>
+    <button class="btn block acc mt16" onclick="addQuest()"><img class="pix" src="assets/ui_plus.png">ОПУБЛИКОВАТЬ ЗАДАНИЕ НА КАРТЕ</button>
+  </div>
+  <div id="admProblem" style="display:none">
+    <label class="f">НАЗВАНИЕ</label><input id="apName" placeholder="ЯМА НА ДОРОГЕ">
+    <label class="f">ОПИСАНИЕ / ПИКТОГРАММА</label>
+    <div class="chips" id="apIcons" style="margin-bottom:8px"></div>
+    <button class="btn block acc" onclick="addProblem()"><img class="pix" src="assets/ui_plus.png">ДОБАВИТЬ ТОЧКУ НА КАРТУ</button>
+  </div>
+  <div id="admPost" style="display:none">
+    <label class="f">ЗАГОЛОВОК</label><input id="apTitle" placeholder="СУББОТНИК 21-ГО">
+    <label class="f">ТЕКСТ</label><textarea id="apText" rows="3" placeholder="ВОДА · ЕДА · ЭНЕРГИЯ"></textarea>
+    <label class="f">КАРТИНКА-ПИКТОГРАММА</label>
+    <div class="chips" id="apPostIcons" style="margin-bottom:8px"></div>
+    <button class="btn block acc" onclick="addPost()"><img class="pix" src="assets/ui_edit.png">ОПУБЛИКОВАТЬ В ЛЕНТУ</button>
+  </div>
+  <div id="admReward" style="display:none">
+    <label class="f">НАЗВАНИЕ ЭКСКЛЮЗИВНОГО АЙТЕМА</label><input id="arName" placeholder="НАПР.: СЕКРЕТНЫЙ СКЛАД ИНСТРУМЕНТОВ 21">
+    <label class="f">ОПИСАНИЕ НАГРАДЫ (ССЫЛКИ НА ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ)</label>
+    <textarea id="arDesc" rows="5" placeholder="ОДНА СТРОКА — ОДНА ССЫЛКА И ПОДПИСЬ. НАПР.: HTTPS://T.ME/+XXX — ЧАТ ВОЛОНТЁРОВ"></textarea>
+    <label class="f mt16">СЕКРЕТНЫЙ ПАРОЛЬ (ЕГО ВВОДИТ ПОЛЬЗОВАТЕЛЬ)</label><input id="arCode" placeholder="НАПР.: 21-DRUZHBA-KEY">
+    <label class="f mt16">НАГРАДА</label>
+    <div class="row" style="gap:8px">
+      <input id="arXp" type="number" placeholder="XP · 80" value="80">
+      <input id="arKarma" type="number" placeholder="КАРМА · 20" value="20">
+    </div>
+    <button class="btn block acc mt16" id="arSubmit" onclick="addRewardItem()"><img class="pix" src="assets/ui_plus.png">СОЗДАТЬ НАГРАДУ</button>
+    <button class="btn block ghost mt8" id="arCancel" style="display:none" onclick="editRewardCancel()">ОТМЕНИТЬ РЕДАКТИРОВАНИЕ</button>
+    <div id="arList" style="margin-top:14px"></div>
+  </div>
+  <div id="admStats" style="display:none">
+    <div class="chart" id="actChart"></div>
+    <div class="spread mt16" id="admStatNums"></div>
+  </div>
+</div></div>
+
+<!-- Статья энциклопедии -->
+<div class="modal" id="artModal"><div class="sheet">
+  <div class="st"><b id="artTitle">СТАТЬЯ</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('artModal')"></div>
+  <div id="artBody" style="font-size:9.5px;line-height:2.1;color:var(--ink-2)"></div>
+  <button class="btn block acc mt16" onclick="closeModal('artModal')">ПОНЯТНО ✦</button>
+</div></div>
+
+<!-- Форум -->
+<div class="modal" id="forumModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_chat.png" style="width:24px">ФОРУМ РАЙОНА</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('forumModal')"></div>
+  <div class="chips" style="margin-bottom:10px">
+    <button class="chip on" onclick="forumTab('recent',this)">ПОСЛЕДНИЕ</button>
+    <button class="chip" onclick="forumTab('mine',this)">МОИ ТЕМЫ</button>
+  </div>
+  <div id="forumList"></div>
+  <div id="forumCompose"></div>
+</div></div>
+
+<!-- Как стать волонтёром -->
+<div class="modal" id="volModal"><div class="sheet">
+  <div class="st"><b><img class="pix" src="assets/ui_paw.png" style="width:22px">КАК СТАТЬ ВОЛОНТЁРОМ 21</b>
+    <img class="x pix" src="assets/ui_close.png" onclick="closeModal('volModal')"></div>
+  <div style="font-size:9.5px;line-height:2.1;color:var(--ink-2)"
+   data-en="<div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>1 · COLLECT DISTRICT PROBLEMS</b><br>Walk your yard and street: broken stairs, dark lamps, leaks, trash, broken playgrounds. Take photos and create quests in the app (or send a list by email).</div><div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>2 · WRITE TO US</b><br>Send the list of district problems and your contact to <b style='color:var(--ink)'>21movement@gmail.com</b> — we’ll connect you to the district movement.</div><div style='border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)'><b style='color:var(--ink)'>3 · MARK THE CITY</b><br>Write «21» on the streets and put QR stickers on doorways and boards — so neighbours find the app and join in.</div>">
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">1 · СОБЕРИ ПРОБЛЕМЫ РАЙОНА</b><br>
+      Пройди свой двор и улицу: разбитые лестницы, тёмные фонари, течи, мусор, сломанные горки. Сфотографируй и заведи задания в приложении (или пришли списком на почту).
+    </div>
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">2 · НАПИШИ НАМ</b><br>
+      Отправь список проблем района и свой контакт на почту <b style="color:var(--ink)">21movement@gmail.com</b> — подключим тебя к движению района.
+    </div>
+    <div style="border:var(--bw) solid var(--ink);padding:12px;margin-bottom:10px;background:var(--card)">
+      <b style="color:var(--ink)">3 · ОТМЕЧАЙ ГОРОД</b><br>
+      Пиши «21» на улицах и клеи стикеры с QR-кодом на подъездах и досках — чтобы соседи находили приложение и включались.
+    </div>
+  </div>
+  <button class="btn block acc" onclick="volMail()"><img class="pix" src="assets/ui_edit.png">НАПИСАТЬ 21MOVEMENT@GMAIL.COM</button>
+  <button class="btn block mt8" onclick="closeModal('volModal');openSticker()"><img class="pix" src="assets/ui_qr.png">СКАЧАТЬ QR-СТИКЕР</button>
+</div></div>
+
+<!-- День ресурса -->
+<div id="resDay">
+  <img class="pix" src="assets/logo.png" style="width:56%;filter:drop-shadow(4px 4px 0 #000)">
+  <b style="font-size:14px;color:var(--acc)">21-Е ЧИСЛО</b>
+  <p style="font-size:9px;max-width:300px;line-height:2">ДЕНЬ РЕСУРСА<br>перераспределение воды, еды и энергии района</p>
+  <div class="res-icons">
+    <div><img class="pix" src="assets/e_drop.png">ВОДА</div>
+    <div><img class="pix" src="assets/e_apple.png">ЕДА</div>
+    <div><img class="pix" src="assets/e_bolt.png">ЭНЕРГИЯ</div>
+  </div>
+  <button class="btn" style="background:var(--acc)" onclick="closeResDay()">ПОЛУЧИТЬ ПАЙЁК ✦</button>
+</div>
+
+<script>
+/* ═══════════════════ ДАННЫЕ ═══════════════════ */
+const A = f => 'assets/'+f;
+const LEVELS = ["НОВИЧОК","СОСЕД","ПОМОЩНИК","ДРУЖИННИК","МАСТЕРОВОЙ","СТРАЖ ДВОРА","ЗНАТЕЛЬ","КРАЕВЕД","НАСТАВНИК","ГЕРОЙ ДВОРА","ХРАНИТЕЛЬ","ДЕСЯТНИК","ГОЛОС РАЙОНА","СТАРОСТА","МАСТЕР РАЙОНА","СОВЕТНИК","ОБЩИННИК","СТРАЖ ГОРОДА","ЛЕГЕНДА ДВОРА","МЭР РАЙОНА","ГЕРОЙ 21","ХРАНИТЕЛЬ ЗНАНИЙ","НАРОДНЫЙ ЛИДЕР","МИРОУСТРОИТЕЛЬ","ЛЕГЕНДА 21"];
+const xpNeed = l => 100*l;
+
+/* Встроенных заданий нет — район публикует их сам через админ-панель (координаты, описание, фото). */
+const QUESTS = [];
+/* «Живой» список заданий = админские из сохранёнки */
+function allQuests(){ return S_.userQuests||[]; }
+function questById(id){ return allQuests().find(q=>q.id===id); }
+/* Расстояние от игрока до точки (км) с помощью haversine */
+function distTo(lat,lng){
+  if(!S_.myPos) return null;
+  const R=6371, to=x=>x*Math.PI/180;
+  const dLat=to(lat-S_.myPos.lat), dLng=to(lng-S_.myPos.lng);
+  const a=Math.sin(dLat/2)**2+Math.cos(to(S_.myPos.lat))*Math.cos(to(lat))*Math.sin(dLng/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1000);
+}
+/* Запрос геолокации (общая ручка для карты и админки) */
+function askPos(ok,fail){
+  if(!navigator.geolocation){ if(fail)fail(); return; }
+  navigator.geolocation.getCurrentPosition(
+    p=>{ S_.myPos={lat:p.coords.latitude,lng:p.coords.longitude}; save(); if(ok)ok(S_.myPos); },
+    ()=>{ if(fail)fail(); }, {timeout:7000, enableHighAccuracy:true});
+}
+
+/* Энциклопедия автономной жизни: идеи (Фреско, Кропоткин) + практика двора */
+const WIKI = {
+  ideas:{ic:'robot.png', name:'ИДЕИ', arts:[
+    ['ЖАК ФРЕСКО · ПРОЕКТ «ВЕНЕРА»',
+     'Американский инженер и футуролог Жак Фреско (1916–2017) разработал модель ресурсо-ориентированной экономики, где все ресурсы планеты — общее достояние, а не товар. Вместо денег и бюрократии — научный учёт потребностей и автоматизация, освобождающая людей от рутины ради творчества и развития. Главные принципы: всеобщий доступ к благам, возобновляемая энергия, переустройство городов как единой умной системы, решение проблем средой, а не наказанием. Фреско подчёркивал: автоматизация при деньгах ведёт к безработице и нищете, а при ресурсо-ориентированном строе — к изобилию и свободному времени для всех.'],
+    ['ПЁТР КРОПОТКИН · ВЗАИМОПОМОЩЬ',
+     'Князь, учёный и анархист Пётр Кропоткин (1842–1921) в книге «Взаимная помощь как фактор эволюции» показал: выживают не самые агрессивные, а те виды и сообщества, что умеют объединяться. Взаимопомощь, солидарность и взаимная поддержка — такой же движитель эволюции, как и соперничество. Идеал Кропоткина — федерация самоуправляемых общин без государства: «каждому по потребностям». Крестьянская община, ремесленные цеха, соседские союзы — примеры того, как люди веками вместе строили дороги, орошали поля и защищали дворы, не дожидаясь приказа сверху.'],
+    ['РЕСУРСО-ОРИЕНТИРОВАННАЯ ЭКОНОМИКА',
+     'Модель, в которой производство и распределение строятся на данных о реальных ресурсах и потребностях, а не на деньгах и прибыли. Технологии и автоматизация служат человеку, а не прибыли: машины берут на себя опасный и монотонный труд, а люди занимаются творчеством, наукой, заботой. Ключевые идеи: бережливый замкнутый цикл (отходы снова в дело), энергия солнца, ветра и воды, открытое знание вместо патентов, город как единая система, где жильё, транспорт и питание спроектированы для всех и на века.'],
+    ['ОБЩИНА И САМОУПРАВЛЕНИЕ',
+     'Исторически соседские и деревенские общины сами решали общие дела: строили колодцы и дороги, делили воду, разбирали споры кругом соседей. Это и есть прямая демократия малого масштаба — общее собрание, взаимопомощь, решение голосованием. В «21» это воплощено в СУДЕ СООБЩЕСТВА, ОБЩЕМ КОШЕЛЬКЕ и совместных заданиях двора: люди договариваются напрямую, а не ждут чиновника.'],
+    ['КИБЕРНЕТИКА БИЕРА · НАРОДНАЯ ЭКОНОМИКА',
+     'В 1970-х в Чили британский кибернетик Стаффорд Бир построил «Киберсин» — систему реального учёта экономики без рынка и планового начальства: фабрики сообщали о ресурсах, сеть помогала распределять их по потребностям. Проект показал: данные об общих ресурсах позволяют управлять честнее и быстрее, чем деньги. Принцип «обратной связи» лежит и в «21»: AI собирает точки, голосования и кошельки района и предлагает приоритеты.'],
+    ['БАЗОВАЯ ТЕХНИКА · РЕМОНТ ВМЕСТО ПОКУПКИ',
+     'Сломалась вещь — чини. Чинить — значит не добывать ресурсы заново: один умелец с молотком, отвёрткой и изолентой закрывает 80% дворовых поломок. Делиться инструментами и чинить сообща — практика общинная, бережёт и деньги, и природу.'],
+  ]},
+  water:{ic:'e_drop.png', name:'ВОДА', arts:[
+    ['ФИЛЬТР ИЗ ПЕСКА И УГЛЯ',
+     'Самодельный фильтр на три слоя: снизу ткань, затем толчёный активированный уголь, крупный песок и мелкий гравий сверху. Грязная вода проходит сверху вниз — уголь задерживает органику и запахи, песок отсекает муть. Фильтрованную воду для питья всё равно нужно прокипятить 10 минут или продезинфицировать. Медленная фильтрация (несколько капель в секунду) даёт лучший результат.'],
+    ['СБОР ДОЖДЕВОЙ ВОДЫ',
+     'Бочка под водосточным жёлобом за один хороший дождь набирает до 200 литров. Дождевая вода мягкая, идеальна для полива огорода, стирки и уборки. Сверх бочки — простая крышка-сетка от листьев и комаров, а отвод через кран внизу. Для питья воду собирают с чистых крыш и дополнительно фильтруют.'],
+    ['КИПЯЧЕНИЕ И ОБЕЗЗАРАЖИВАНИЕ',
+     '10 минут спокойного кипения убивают большинство бактерий и паразитов. В горах, где вода закипает при более низкой температуре, кипятят дольше. Запасной вариант без огня — таблетки обеззараживания или капля отбеливателя (пара капель на литр, отстоять 30 минут), но кипячение надёжнее и доступнее.'],
+  ]},
+  energy:{ic:'e_bolt.png', name:'ЭНЕРГИЯ', arts:[
+    ['СОЛНЕЧНАЯ ПАНЕЛЬ ИЗ ХЛАМА',
+     'Из старых фотоэлементов и аккумулятора собирается простая зарядка: панель преобразует свет в ток, контроллер заряжает аккумулятор, а USB-модуль отдаёт его телефону. Даже небольшой панели хватает, чтобы за день зарядить гаджет и фонарь — шаг к энергетической автономии двора.'],
+    ['ВЕТРЯК ВО ДВОРЕ',
+     'Мини-ветряк из моторчика-генератора и лопастей, вырезанных из ПВХ-трубы, даёт ток на зарядку при ветре. Важно закрепить его на мачте повыше и защитить генератор от влаги. Вместе с небольшой солнечной панелью это круглосуточный автономный источник.'],
+    ['ЭКОНОМИЯ СВЕТА И ТЕПЛА',
+     'Светодиоды потребляют в 7–8 раз меньше ламп накаливания и работают в десятки раз дольше. Утеплённые окна, шторы на ночь и тепло за шкафом у внешней стены берегут тепло. Каждый сэкономленный ватт — это панель, аккумулятор и независимость, которую не надо покупать.'],
+  ]},
+  food:{ic:'e_apple.png', name:'ЕДА', arts:[
+    ['ОГОРОД НА ПОДОКОННИКЕ',
+     'Зелень (укроп, лук, салат), редис и карликовые томаты растут в ящиках даже зимой на южном окне. Нужен дренаж, рыхлая земля и регулярный полов. Совместный огород во дворе даёт больше: общие грядки, очередь на полив и общий урожай.'],
+    ['КОМПОСТ ИЗ ПИЩЕВЫХ ОТХОДОВ',
+     'Очистки овощей и фруктов, кофейная гуща, скошенная трафа в закрытом ящике за пару месяцев превращаются в плодородную землю. Мясное, жирное и молочное в компост не кладут. Это замкнутый цикл: отходы еды → земля → новая еда.'],
+    ['ОБЩИЕ ЗАКУПКИ И ОБМЕН',
+     'Покупать оптом на весь двор дешевле и экологичнее: меньше упаковки и доставок. Книги по выживанию и инструменты тоже ходят по рукам. Общий заказ района — это и экономия, и взаимная поддержка по Кропоткину.'],
+  ]},
+  repair:{ic:'e_gear.png', name:'РЕМОНТ', arts:[
+    ['БАЗОВЫЙ НАБОР ИНСТРУМЕНТОВ',
+     'Молоток, отвёртки (крестовая и прямая), плоскогубцы, изолента и нож закрывают около 80% бытовых поломок: расшатавшаяся скамейка, оторванная ручка, перетёртый провод. Общий ящик инструментов на двор дешевле, чем личный у каждого.'],
+    ['ПОЧИНКА МЕБЕЛИ И ДВОРА',
+     'Доска вместо подгнившей планки, саморезы вместо гвоздей, клей под распор — и скамейка служит ещё годы. Правило: сначала зачистить и укрепить основание, потом ставить декор. Чиним сообща — и работа быстрее, и навыки передаются.'],
+    ['БЕЗОПАСНАЯ ПРОВОДКА',
+     'Никаких «скруток на весу»: контакты — в клеммах или пайке, изоляция без трещин, автомат в щитке под нагрузку. Самодельные удлинители и перегруз — главная причина пожаров. Не уверен в проводке — зови соседа-электрика, а не испытывай удачу.'],
+  ]},
+  law:{ic:'e_scales.png', name:'ПРАВО', arts:[
+    ['СУД СОСЕДЕЙ И ОБЩЕЕ СОБРАНИЕ',
+     'Спор внутри двора быстрее и честнее решают сами соседи голосованием, а не чиновник через полгода. Общее собрание собственников жилья — уже законный механизм: большинство в 2/3 принимает решения по двору, благоустройству и общим деньгам.'],
+    ['ПРАВО НА БЛАГОУСТРОЙСТВО',
+     'Житель вправе требовать ремонта, освещения и озеленения двора: земля под домом и двор — общее имущество собственников. Коллективное обращение с подписями работает в разы сильнее одного письма.'],
+    ['РАЗДЕЛЬНЫЙ СБОР И РЕСУРСЫ',
+     'Разделённый мусор — это вторичное сырьё: металл, стекло, пластик и бумага возвращаются в производство. Общий контейнер во дворе экономит вывозы и возвращает ресурсы в оборот — практический шаг к замкнутому циклу ресурсо-ориентированной модели.'],
+  ]},
+  green:{ic:'q_plant.png', name:'ЗЕМЛЯ', arts:[
+    ['ОЗЕЛЕНЕНИЕ ДВОРА',
+     'Деревья дают тень, чистый воздух, снижают жару летом и держат почву. Сажают в ямы с дренажем, поливают первый год регулярно, выбирают местные породы. Один большой взрослый куст приживается хуже молодого саженца.'],
+    ['ЛАНДШАФТ И ВОДА НА УЧАСТКЕ',
+     'Дождевые канавки и мульча удерживают влагу, дождевой сад в низине собирает ливни, а не топит двор. Мульча из скошенной травы сокращает полив вдвое — земля под ней не пересыхает.'],
+  ]},
+};
+
+const BADGES = [
+  ['bd_water.png','ВОДА'],['bd_energy.png','ЭНЕРГИЯ'],['bd_garden.png','ОГОРОД'],['bd_repair.png','РЕМОНТ'],
+  ['bd_help.png','ПОМОЩЬ'],['bd_voice.png','ГОЛОС'],['bd_book.png','КНИГИ'],['bd_law.png','ПРАВО'],
+];
+const HATS = ['hat_cap.png','hat_helmet.png','hat_beanie.png','hat_crown.png'];
+const ACCS = ['acc_glasses.png','acc_scarf.png','acc_mask.png','acc_phones.png'];
+const ICON_POOL = ['q_bench.png','q_recycle.png','q_plant.png','q_lamp.png','q_water.png','e_house.png','e_shield.png'];
+
+/* Артефакты инвентаря — выдаются ТОЛЬКО за выполненные задания */
+const ARTIFACTS = [
+  {id:'ar_backpack', f:'ar_backpack.png',  n:'РЮКЗАК ПОМОЩНИКА',   q:'ПЕРВОЕ ЗАДАНИЕ',       en:'HELPER’S BACKPACK',  eq:'FIRST QUEST'},
+  {id:'ar_medkit',   f:'ar_medkit.png',    n:'АПТЕЧКА СОСЕДА',     q:'ПОМОЩЬ РЯДОМ',         en:'NEIGHBOUR’S AID KIT',eq:'HELP NEARBY'},
+  {id:'ar_console',  f:'ar_console.png',   n:'ТЕТРИС СО ДВОРА',    q:'ИГРА ВСЕМ ДВОРОМ',     en:'YARD TETRIS',        eq:'PLAY TOGETHER'},
+  {id:'ar_glasses',  f:'ar_glasses.png',   n:'ОЧКИ ВИДЕТЬ ВАЖНОЕ', q:'ВЗГЛЯД НА РАЙОН',      en:'SEE-WHAT-MATTERS GLASSES', eq:'EYE ON THE DISTRICT'},
+  {id:'ar_bunny',    f:'ar_bunny.png',     n:'ЗАЯЦ-УТЕШИТЕЛЬ',     q:'ДОБРО ДЕТЯМ',          en:'COMFORT BUNNY',      eq:'KINDNESS TO KIDS'},
+  {id:'ar_notebook', f:'ar_notebook.png',  n:'БЛОКНОТ КОТА',       q:'ИДЕИ РАЙОНА',          en:'CAT NOTEBOOK',       eq:'DISTRICT IDEAS'},
+  {id:'ar_pencil',   f:'ar_pencil.png',    n:'КАРАНДАШ МАСТЕРА',   q:'ЧИНИМ СВОИМИ РУКАМИ',  en:'MAKER’S PENCIL',     eq:'FIX WITH OUR HANDS'},
+  {id:'ar_case',     f:'ar_case.png',      n:'ПЕНАЛ С СЕРДЦЕМ',    q:'ШКОЛЬНЫЙ СБОР',        en:'HEART PENCIL CASE',  eq:'SCHOOL DRIVE'},
+  {id:'ar_phone',    f:'ar_phone.png',     n:'ТЕЛЕФОН С ЧАРМАМИ',  q:'ГОЛОС РАЙОНА',         en:'CHARMED PHONE',      eq:'VOICE OF THE DISTRICT'},
+  {id:'ar_necklace', f:'ar_necklace.png',  n:'ЖЕТОН 21',           q:'ВОЛОНТЁР 21',          en:'21 DOG TAG',         eq:'21 VOLUNTEER'},
+  /* ── ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ: выдаются по секретному коду ── */
+  {id:'ex_axe',        f:'ex_axe.png',        n:'ТОПОР ВЫЖИВАЛЬЩИКА', q:'ЭКСКЛЮЗИВ · КОД', en:'SURVIVAL AXE',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_binoculars', f:'ex_binoculars.png', n:'БИНОКЛЬ РАЗВЕДКИ',   q:'ЭКСКЛЮЗИВ · КОД', en:'SCOUT BINOCULARS', eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_gloves',     f:'ex_gloves.png',     n:'ПЕРЧАТКИ РАБОТ',     q:'ЭКСКЛЮЗИВ · КОД', en:'WORK GLOVES',      eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_boots',      f:'ex_boots.png',      n:'БОТИНКИ ПУТНИКА',    q:'ЭКСКЛЮЗИВ · КОД', en:'WAYFARER BOOTS',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_fuel',       f:'ex_fuel.png',       n:'КАНИСТРА ТОПЛИВА',   q:'ЭКСКЛЮЗИВ · КОД', en:'FUEL CAN',         eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_tape',       f:'ex_tape.png',       n:'МОТОК СКОТЧА',       q:'ЭКСКЛЮЗИВ · КОД', en:'DUCT TAPE ROLL',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_walkie',     f:'ex_walkie.png',     n:'РАЦИЯ РАЙОНА',       q:'ЭКСКЛЮЗИВ · КОД', en:'DISTRICT RADIO',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_stanley',    f:'ex_stanley.png',    n:'ФЛЯГА STANLEY',      q:'ЭКСКЛЮЗИВ · КОД', en:'STANLEY BOTTLE',   eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_flashlight', f:'ex_flashlight.png', n:'ФОНАРЬ НОЧНОЙ',      q:'ЭКСКЛЮЗИВ · КОД', en:'NIGHT FLASHLIGHT', eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_pack',       f:'ex_pack.png',       n:'РЮКЗАК ПОХОДА',      q:'ЭКСКЛЮЗИВ · КОД', en:'TREK PACK',        eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_aidkit',     f:'ex_aidkit.png',     n:'АПТЕЧКА-ПОХОДНАЯ',   q:'ЭКСКЛЮЗИВ · КОД', en:'FIELD MEDKIT',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_bandana',    f:'ex_bandana.png',    n:'БАНДАНА 21',         q:'ЭКСКЛЮЗИВ · КОД', en:'21 BANDANA',       eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_battery',    f:'ex_battery.png',    n:'ЗАПАС БАТАРЕЕК',     q:'ЭКСКЛЮЗИВ · КОД', en:'BATTERY PACK',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_pot',        f:'ex_pot.png',        n:'КОТЕЛОК ПОХОДА',     q:'ЭКСКЛЮЗИВ · КОД', en:'CAMP POT',         eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_plants',     f:'ex_plants.png',     n:'СЕМЕНА ОГОРОДА',     q:'ЭКСКЛЮЗИВ · КОД', en:'GARDEN SEEDS',     eq:'EXCLUSIVE · CODE', excl:true},
+  {id:'ex_can',        f:'ex_can.png',        n:'НЗ ТУШЁНКИ',         q:'ЭКСКЛЮЗИВ · КОД', en:'STEW RATION',      eq:'EXCLUSIVE · CODE', excl:true},
+];
+
+const DEFAULT_PROJECTS = [
+  {ic:'cf_gazel.png', t:'ТО ГАЗЕЛИ ФАРИДА · МАРШРУТКА РАЙОНА', have:42000, goal:120000, days:9, by:'ВОДИТЕЛЬ ФАРИД'},
+  {ic:'cf_slide.png', t:'ДЕТСКАЯ ПЛОЩАДКА ВО ДВОРЕ', have:750000, goal:1200000, days:12},
+  {ic:'cf_trees.png', t:'ОЗЕЛЕНЕНИЕ АЛЛЕИ У ДОМА', have:310000, goal:500000, days:8},
+];
+/* Стартовое задание района (появляется у всех при первом запуске) */
+const SEED_QUESTS = [
+  {id:'seed_stairs', ic:'q_bench.png', t:'СЛОМАНА ЛЕСТНИЦА У ПОДЪЕЗДА 2',
+   desc:'УЛ. ДРУЖБЫ, ДОМ ПО ДВОРА, ПОДЪЕЗД 2. СЛОМАНА ЛЕСТНИЦА НА ПОДЪЕЗДЕ: РАЗБИТЫ СТУПЕНИ, ПОДНИМАТЬСЯ ОПАСНО, ОСОБЕННО ПОЖИЛЫМ И С КОЛЯСКАМИ. НУЖНО ОГОРОДИТЬ ОПАСНЫЙ УЧАСТОК И ПОЧИНИТЬ СТУПЕНИ.',
+   lat:48.7928, lng:44.7591, xp:60, karma:15, badge:'bd_repair.png', art:'ar_backpack', photo:null},
+];
+const DEFAULT_DISPUTES = [
+  {t:'ШУМНЫЕ СОСЕДИ ПО НОЧАМ', yes:24, no:3},
+  {t:'ПЛОЩАДКА ДЛЯ ВЫГУЛА СОБАК', yes:37, no:8},
+  {t:'КУДА ПОСТАВИТЬ КОНТЕЙНЕР?', yes:12, no:19},
+];
+
+/* Животные района — «21 заботится о тех, кто рядом» */
+const PETS = [
+  {ic:'ani_dog.png',  t:'ПЁС У ПОДЪЕЗДА',      d:'Нужны еда, вода и тёплая подстилка · двор 7',  xp:40, q:'hands'},
+  {ic:'ani_cat.png',  t:'КОТЁНОК НА ДОРОГЕ',    d:'Отвести в безопасный уголок · 120 м',          xp:35, q:'hands'},
+  {ic:'ani_bird.png', t:'ГОЛУБЬ РАНЕН',         d:'Подкармливать, сообщить соседям · сквер',       xp:25, q:'green'},
+];
+
+/* AI-специалисты района (каждый ведёт свою тему знаний) */
+const AGENTS = [
+  {ic:'robot.png',    n:'ФИЛОСОФ 21',   d:'идеи автономии', cat:'ideas',  ask:'КТО ТАКОЙ ЖАК ФРЕСКО?'},
+  {ic:'e_drop.png',   n:'ГИДРОЛОГ',     d:'вода',       cat:'water',  ask:'КАК ОЧИСТИТЬ ВОДУ?'},
+  {ic:'e_bolt.png',   n:'ЭНЕРГЕТИК',    d:'энергия',    cat:'energy', ask:'КАК ЭКОНОМИТЬ ЭНЕРГИЮ?'},
+  {ic:'e_apple.png',  n:'АГРОНОМ',      d:'еда',        cat:'food',   ask:'КАК ВЫРАСТИТЬ ЕДУ?'},
+  {ic:'e_gear.png',   n:'ИНЖЕНЕР',      d:'ремонт',     cat:'repair', ask:'КАК ПОЧИНИТЬ ВО ДВОРЕ?'},
+  {ic:'e_scales.png', n:'ЮРИСТ',        d:'право',      cat:'law',    ask:'КАК РЕШИТЬ СПОР?'},
+];
+
+/* ═══════════════════ СОСТОЯНИЕ ═══════════════════ */
+let S_ = {};
+function load(){
+  try{ S_ = JSON.parse(localStorage.getItem('app21')) || {}; }catch(e){ S_ = {}; }
+  S_ = Object.assign({xp:0, karma:2430, coins:0, quests:{}, points:[], posts:[], userQuests:[], myPos:null, disputes:DEFAULT_DISPUTES.map(d=>({...d})),
+    projects:DEFAULT_PROJECTS.map(p=>({...p})), wallet:0, badges:[], hat:null, acc:null, dark:false,
+    articles:[], acts:Array.from({length:7},()=>3+Math.floor(Math.random()*14)), greeted:false, voted:{}, funded:{},
+    seeded:false, forumPosts:[], tgUser:null, inventory:{}, lang:'ru', rewards:[], unlocked:[]}, S_);
+  /* первичный сид: стартовое задание района */
+  if(!S_.seeded){
+    S_.seeded=true;
+    SEED_QUESTS.forEach(q=>{ if(!S_.userQuests.some(u=>u.id===q.id)) S_.userQuests.push({...q}); });
+    save();
+  }
+}
+function save(){ try{ localStorage.setItem('app21', JSON.stringify(S_)); }
+  catch(e){ toast('ПАМЯТЬ ПЕРЕПОЛНЕНА — ФОТО СЛИШКОМ БОЛЬШОЕ'); } }
+
+const lvlOf = xp => { let l=1, x=xp; while(x>=xpNeed(l) && l<25){ x-=xpNeed(l); l++; } return l; };
+const lvlInfo = xp => { const l=lvlOf(xp); let x=xp; for(let i=1;i<l;i++) x-=xpNeed(i); return {l, into:x, need:l<25?xpNeed(l):xpNeed(25), name:LEVELS[l-1]}; };
+
+/* ═══════════════════ ОБЩЕЕ ═══════════════════ */
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
+function openModal(id){ document.getElementById(id).classList.add('on'); }
+function closeModal(id){ document.getElementById(id).classList.remove('on'); }
+function enterApp(){ document.getElementById('landing').classList.add('hide'); setTimeout(()=>{ document.getElementById('landing').style.display='none'; },500);
+  if(!S_.greeted){ S_.greeted=true; save(); setTimeout(openAi, 900); }
+  checkResourceDay(false);
+}
+function go(t){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+t).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  document.getElementById('main').scrollTop=0;
+  const titles={home:'21',map:'КАРТА',quests:'КВЕСТЫ',wiki:'ЭНЦИКЛОПЕДИЯ',profile:'ПРОФИЛЬ'};
+  document.getElementById('hTitle').textContent=tr(titles[t]);
+  if(t==='map') initMap();
+  if(t==='wiki') renderWiki();
+}
+function toggleTheme(){ S_.dark=!S_.dark; document.body.classList.toggle('dark',S_.dark); save(); }
+
+/* ═══════════════════ РЕНДЕР СТАТИСТИКИ ═══════════════════ */
+function renderStats(){
+  const li=lvlInfo(S_.xp);
+  document.getElementById('hKarma').textContent=S_.karma;
+  document.getElementById('hpKarma').textContent=S_.karma;
+  document.getElementById('hpXp').textContent=S_.xp;
+  document.getElementById('hpCoin').textContent=S_.wallet;
+  document.getElementById('hpLvl').textContent=li.l;
+  document.getElementById('lvlBar').style.width=(li.into/li.need*100)+'%';
+  document.getElementById('lvlName').textContent='УРОВЕНЬ '+li.l+' · '+li.name;
+  document.getElementById('lvlXp').textContent=li.into+' / '+li.need+' XP';
+  document.getElementById('pfKarma').textContent=S_.karma;
+  document.getElementById('pfXp').textContent=S_.xp;
+  document.getElementById('pfLvl').textContent=li.l;
+  document.getElementById('pfBar').style.width=(li.into/li.need*100)+'%';
+  document.getElementById('pfXpTxt').textContent=li.into+'/'+li.need;
+  const active=allQuests().filter(q=>S_.quests[q.id]==='mine').length;
+  document.getElementById('activeCount').textContent=active;
+  // гардероб
+  ['hatLayer','hatLayer2'].forEach(id=>{ const e=document.getElementById(id); e.style.opacity=S_.hat?1:0; if(S_.hat)e.src=A(S_.hat); });
+  ['accLayer','accLayer2'].forEach(id=>{ const e=document.getElementById(id); e.style.opacity=S_.acc?1:0; if(S_.acc)e.src=A(S_.acc); });
+  document.body.classList.toggle('dark',S_.dark);
+  renderBadges();
+  renderDistrict();
+  // обратный отсчёт
+  const now=new Date(), d21=new Date(now.getFullYear(), now.getMonth(), 21);
+  if(now.getDate()>21) d21.setMonth(d21.getMonth()+1);
+  const days=Math.ceil((d21-now)/86400000);
+  document.getElementById('resCountdown').textContent = days===0?'СЕГОДНЯ!':'до 21-го: '+days+' дн.';
+}
+function renderBadges(){
+  const row=document.getElementById('badgeRow'), all=document.getElementById('badgeAll');
+  row.innerHTML=BADGES.map(([f,n])=>`<div class="b ${S_.badges.includes(f)?'got':''}" onclick="openBadges()"><img class="pix" src="${A(f)}"><span>${n}</span></div>`).join('');
+  all.innerHTML=BADGES.map(([f,n])=>`<div class="b ${S_.badges.includes(f)?'got':''}"><img class="pix" src="${A(f)}" style="max-width:80px"><span>${n}${S_.badges.includes(f)?'':' · ???'}</span></div>`).join('');
+}
+function openBadges(){ renderBadges(); openModal('badgeModal'); }
+function renderDistrict(){
+  const done=Object.values(S_.quests).filter(s=>s==='done').length;
+  const probs=S_.points.filter(p=>p.type==='problem').length;
+  const data=[['q_bench.png',done,'КВЕСТЫ'],['mk_problem.png',probs,'ПРОБЛЕМЫ'],['ui_coin.png',S_.wallet,'БЮДЖЕТ'],['face.png',42+done*3,'СОСЕДИ']];
+  document.getElementById('districtStats').innerHTML=data.map(([f,v,n])=>`<div><img class="ic pix" src="${A(f)}"><b>${v}</b><span>${n}</span></div>`).join('');
+}
+
+/* ═══════════════════ ЖИВОТНЫЕ РАЙОНА ═══════════════════ */
+function renderPets(){
+  const el=document.getElementById('petList'); if(!el) return;
+  el.innerHTML=PETS.map((p,i)=>`
+    <div class="pet-card" onclick="petHelp(${i})">
+      <div class="pic"><img class="pix" src="${A(p.ic)}"></div>
+      <div class="info">
+        <div class="t">${p.t}</div>
+        <div class="d">${p.d}</div>
+        <div class="xp">⚡ +${p.xp} XP · ◉ +${Math.round(p.xp/4)} КАРМЫ</div>
+      </div>
+      <div class="open" style="font-size:11px;font-weight:700;border-radius:999px;padding:8px 14px;background:var(--ink);color:#f4f0e7">ПОМОЧЬ</div>
+    </div>`).join('');
+}
+function petHelp(i){ const p=PETS[i];
+  if(p.q && questById(p.q)){ openQuest(p.q); toast('КВЕСТ ЗАБОТЫ ОТКРЫТ ✦'); }
+  else toast('СОСЕДИ УЖЕ В КУРСЕ · СКОРО ПОЯВИТСЯ ЗАДАНИЕ ✦'); }
+
+/* ═══════════════════ КВЕСТЫ ═══════════════════ */
+let qFilter_='all';
+function qFilter(f,btn){ qFilter_=f; document.querySelectorAll('#s-quests .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on'); renderQuests(); }
+function renderQuests(){
+  const el=document.getElementById('questList');
+  const list=allQuests();
+  if(!list.length){
+    el.innerHTML=`<div class="empty-note"><img class="pix" src="${A('nav_sword.png')}">
+      ЗАДАНИЙ ПОКА НЕТ.<br>РАЙОН ПУБЛИКУЕТ ИХ В АДМИН-ПАНЕЛИ:<br>КООРДИНАТЫ · ОПИСАНИЕ · ФОТО</div>`;
+    return;
+  }
+  el.innerHTML=list.filter(q=>{
+    const st=S_.quests[q.id]||'open';
+    if(qFilter_==='open')return st==='open';
+    if(qFilter_==='mine')return st==='mine';
+    if(qFilter_==='done')return st==='done';
+    return true;
+  }).map(q=>{
+    const st=S_.quests[q.id]||'open';
+    const dm=distTo(q.lat,q.lng); const distTxt=dm!=null?dm+' М':'— М';
+    return `<div class="item ${st==='done'?'done':''}" onclick="openQuest('${q.id}')">
+      <div class="ic"><img class="pix" src="${q.photo? q.photo : A(q.ic)}"></div>
+      <div class="body"><div class="t">${q.t}</div>
+        ${q.photo?`<div class="tiny" style="margin:2px 0;color:var(--ink-3)">${(q.desc||'').toUpperCase()}</div>`:''}
+        <div class="meta"><span class="g">⚡ +${q.xp} XP</span><span class="g">◉ +${q.karma}</span><span>📍 ${distTxt}</span></div></div>
+      <div class="open">${st==='done'?'✓':st==='mine'?'В ИГРЕ':'ОТКРЫТЬ'}</div></div>`;
+  }).join('');
+}
+let curQ=null, curStep=0, toolsDone=0, photoDone=false;
+function openQuest(id){
+  curQ=questById(id); if(!curQ){ toast('ЗАДАНИЕ НЕ НАЙДЕНО'); return; } curStep=0; toolsDone=0; photoDone=false;
+  if(!S_.quests[id]) S_.quests[id]='mine'; save(); renderQuests(); renderStats();
+  document.getElementById('qTitle').innerHTML=`<img class="pix" src="${curQ.photo?curQ.photo:A(curQ.ic)}" style="width:24px;image-rendering:pixelated">${curQ.t}`;
+  document.getElementById('qReward').textContent='⚡+'+curQ.xp+' ◉+'+curQ.karma;
+  document.getElementById('qTools').innerHTML='';
+  document.getElementById('qAttach').style.display='none';
+  document.getElementById('qNext').style.display='inline-flex';
+  questStep();
+  openModal('questModal');
+}
+function questStep(){
+  const total=curQ.tools?4:3;
+  document.getElementById('qStepBar').firstElementChild.style.width=((curStep+1)/total*100)+'%';
+  document.getElementById('qStepTxt').textContent=(S_.lang==='en'?'STEP ':'ШАГ ')+(curStep+1)+(S_.lang==='en'?' OF ':' ИЗ ')+total;
+  const chat=document.getElementById('qChat');
+  const qAvatar=cur=>curQ.photo?`<img class="pix" src="${curQ.photo}" style="image-rendering:pixelated">`:`<img class="pix" src="${A('worker.png')}">`;
+  if(curStep===0 && curQ.tools){
+    chat.innerHTML=`<div class="msg"><div class="av">${qAvatar()}</div><div class="bubble2">${curQ.steps[0]}</div></div>`;
+    document.getElementById('qTools').innerHTML=curQ.tools.map((t,i)=>{
+      const [f,nm,ds]=t.split('|');
+      return `<div class="tool" id="tool${i}" onclick="takeTool(${i})"><img class="pix" src="${A(f)}"><div><div class="nm">${nm}</div><div class="ds">${ds}</div></div><div class="ck">✓</div></div>`;
+    }).join('');
+    document.getElementById('qNext').textContent=tr('ИНСТРУМЕНТЫ ГОТОВЫ ▶');
+  } else if((curStep===0 && !curQ.tools) || (curStep===1 && curQ.tools)){
+    // брифинг задания: описание + координаты + фото
+    const dm=distTo(curQ.lat,curQ.lng);
+    const photoLine=curQ.photo?`<div style="margin:8px 0"><img class="pix" src="${curQ.photo}" style="width:100%;image-rendering:pixelated;border:var(--bw) solid var(--ink)"></div>`:'';
+    chat.innerHTML=`<div class="msg"><div class="av">${qAvatar()}</div><div class="bubble2">
+      ${curQ.desc||'ЗАДАНИЕ ОТ РАЙОНА.'}
+      ${photoLine}
+      <div class="tiny" style="color:var(--ink-3);margin-top:6px">📍 ${curQ.lat.toFixed(5)}, ${curQ.lng.toFixed(5)}${dm!=null?` · ${dm} М ОТ ТЕБЯ`:''}</div>
+    </div></div>`;
+    document.getElementById('qTools').innerHTML='';
+    document.getElementById('qNext').textContent=(curQ.tools?tr('СДЕЛАЛ ▶'):tr('БЕРУСЬ ЗА ДЕЛО ▶'));
+  } else if(curStep===(curQ.tools?2:1)){
+    addMsg('worker','ГОТОВО? ПРИШЛИ ФОТО РЕЗУЛЬТАТА ИЛИ ЗАПИШИ ГОЛОСОМ — И ЗАДАНИЕ ЗАЧТЕНО.');
+    document.getElementById('qAttach').style.display='flex';
+    document.getElementById('qNext').textContent=tr('ЗАВЕРШИТЬ ЗАДАНИЕ ✓');
+  } else {
+    finishQuest();
+  }
+  chat.scrollIntoView({block:'end'});
+}
+function addMsg(who,txt){
+  const chat=document.getElementById('qChat');
+  chat.insertAdjacentHTML('beforeend',`<div class="msg ${who==='me'?'me':''}">
+    <div class="av"><img class="pix" src="${A(who==='me'?'face.png':'worker.png')}"></div><div class="bubble2">${txt}</div></div>`);
+  chat.scrollTop=chat.scrollHeight;
+}
+function takeTool(i){
+  const el=document.getElementById('tool'+i);
+  if(el.classList.contains('checked'))return;
+  el.classList.add('checked'); toolsDone++;
+  addMsg('me','ВЗЯЛ: '+el.querySelector('.nm').textContent);
+  if(toolsDone>=curQ.tools.length) addMsg('worker','ОТЛИЧНО! ВСЁ ПОД РУКОЙ.');
+}
+function qPhoto(){ photoDone=true; addMsg('me','📷 ФОТО ДОБАВЛЕНО'); toast('ФОТО ПРИКРЕПЛЕНО ⚡'); }
+function questNext(){
+  if(curStep===0 && curQ.tools && toolsDone<curQ.tools.length){ toast('НАЖМИ НА КАЖДЫЙ ИНСТРУМЕНТ'); return; }
+  if(curStep===(curQ.tools?2:1) && !photoDone){ toast('НУЖНЫ ФОТО ИЛИ ГОЛОСОВОЕ ПОДТВЕРЖДЕНИЕ'); return; }
+  curStep++; questStep();
+}
+function finishQuest(){
+  S_.quests[curQ.id]='done';
+  S_.xp+=curQ.xp; S_.karma+=curQ.karma; S_.coins+=Math.floor(curQ.xp/10);
+  if(!S_.badges.includes(curQ.badge)) S_.badges.push(curQ.badge);
+  /* награда-артефакт: заданный в задании или следующий по каталогу */
+  const earned = grantArtifact(curQ);
+  S_.acts[Math.min(6,S_.acts.length-1)]++;
+  save(); renderStats(); renderQuests(); bumpCoins();
+  const chat=document.getElementById('qChat');
+  chat.insertAdjacentHTML('beforeend',`<div class="msg"><div class="av"><img class="pix" src="${A('worker.png')}"></div>
+    <div class="bubble2">ИДЕАЛЬНО! +${curQ.xp} XP, +${curQ.karma} КАРМЫ.<br>${earned?`АРТЕФАКТ В ИНВЕНТАРЕ: ${earned.n} 🎒<br>`:''}ТЫ СДЕЛАЛ ГОРОД ЛУЧШЕ ✦</div></div>`);
+  document.getElementById('qAttach').style.display='none';
+  document.getElementById('qNext').textContent=tr('ЗАБРАТЬ НАГРАДУ');
+  document.getElementById('qNext').onclick=()=>{ closeModal('questModal'); document.getElementById('qNext').onclick=questNext; toast('НАГРАДА ПОЛУЧЕНА ⚡✦'); renderStats(); };
+}
+// микрофон-заглушка
+document.addEventListener('pointerdown',e=>{ if(e.target.closest('#micBtn')){ e.target.closest('#micBtn').classList.add('acc'); } });
+document.addEventListener('pointerup',e=>{ const b=e.target.closest('#micBtn'); if(b){ b.classList.remove('acc'); photoDone=true; addMsg('me','🎤 ГОЛОСОВОЕ ЗАПИСАНО'); } });
+
+/* ═══════════════════ ЛЕНТА / СООБЩЕСТВО ═══════════════════ */
+function defaultPosts(){ return [
+  {ic:'ui_calendar.png', nick:'СОСЕД_87',     time:'2 МИН НАЗАД',  t:'21-ГО — СУББОТНИК',       txt:'Вода · еда · энергия. Сбор у двора в 10:00',      likes:42, cm:12},
+  {ic:'q_bench.png',     nick:'МАСТЕРОВОЙ',   time:'15 МИН НАЗАД', t:'СКАМЕЙКУ ПОЧИНИЛИ',       txt:'Двор стал лучше — доска закреплена',             likes:28, cm:6},
+  {ic:'e_drop.png',      nick:'АКТИВИСТ_21',  time:'1 ЧАС НАЗАД',  t:'ТОЧКА ВОДЫ ОТКРЫТА',      txt:'Новый фильтр у дома 7, вода проверена',          likes:37, cm:9},
+];}
+function renderFeed(){
+  const posts = (S_.posts.length?S_.posts:[]).concat(defaultPosts());
+  document.getElementById('feedList').innerHTML=posts.slice(0,5).map(p=>`
+    <div class="post">
+      <div class="ph"><img class="pix" src="${A('face.png')}"><span><span class="nick">${p.nick||'СОСЕД'}</span> · ${p.time||'ТОЛЬКО ЧТО'}</span></div>
+      <div class="pic"><img class="big pix" src="${A(p.ic)}"><div><div style="font-size:14px;font-weight:700;line-height:1.35">${p.t}</div><div class="tiny mt8">${p.txt}</div></div></div>
+      <div class="acts"><span>💬 ${p.cm!=null?p.cm:12}</span><span>◉ ${p.likes||24}</span><span>⚡ ПОДДЕРЖАТЬ</span></div>
+    </div>`).join('');
+}
+
+/* ═══════════════════ КАРТА (Яндекс + фоллбэк) ═══════════════════ */
+let mapInst=null, mapReady=false;
+let mapTries=0;
+function initMap(){
+  renderMapPoints();
+  if(mapReady){ syncYmarks(); return; }
+  if(window.ymaps && ymaps.Map){
+    try{ ymaps.ready(ymapInit); }catch(e){ showMapFallback(); }
+  } else if(mapTries++ < 6){
+    // скрипт Яндекс-карт ещё грузится — ждём и пробуем снова
+    setTimeout(initMap, 900);
+  } else showMapFallback();
+}
+function showMapFallback(){ const f=document.getElementById('mapFallback'); if(f) f.style.display='block'; }
+function ymapInit(){
+  try{
+    const center = S_.myPos?[S_.myPos.lat,S_.myPos.lng]:[48.7956,44.7537]; // Волжский по умолчанию
+    mapInst = new ymaps.Map('ymap',{ center, zoom:15, controls:['zoomControl','geolocationControl'] });
+    mapReady=true;
+    document.getElementById('mapFallback').style.display='none';
+    document.getElementById('mapMarkers').style.display='none';
+    syncYmarks();
+    // центрируемся на игроке, как только придёт геолокация
+    if(!S_.myPos) askPos(()=>{ try{ mapInst.setCenter([S_.myPos.lat,S_.myPos.lng]); syncYmarks(); }catch(e){} });
+  }catch(e){ showMapFallback(); }
+}
+function mapZoom(d){ if(mapInst){ mapInst.setZoom(mapInst.getZoom()+d); } }
+const MARK_IC={problem:'mk_problem.png',quest:'mk_quest.png',project:'mk_project.png',done:'mk_done.png'};
+/* Точки = админские проблемы + задания (квесты) */
+function allPoints(){
+  const pts=S_.points.slice();
+  allQuests().forEach(q=>{ if(q.lat!=null&&q.lng!=null) pts.push({lat:q.lat,lng:q.lng,type:'quest',t:q.t,quest:q.id,photo:q.photo,ic:q.ic}); });
+  return pts;
+}
+function pointTap(p){
+  if(p.quest){ openQuest(p.quest); } else { toast(p.t); }
+}
+function renderMapPoints(){
+  const wrap=document.getElementById('mapMarkers'); wrap.innerHTML='';
+  const list=document.getElementById('mapPointList');
+  const pts=allPoints();
+  list.innerHTML = pts.length? '' : `<div class="empty-note"><img class="pix" src="${A('mk_quest.png')}">ТОЧЕК ПОКА НЕТ.<br>ДОБАВЬТЕ ЗАДАНИЕ ИЛИ ПРОБЛЕМУ В АДМИН-ПАНЕЛИ.</div>`;
+  pts.forEach((p,i)=>{
+    const x=14+((p.lng*1000)%72), y=14+((p.lat*1000)%64);
+    const icSrc = p.photo? p.photo : A(MARK_IC[p.type]||'mk_problem.png');
+    wrap.insertAdjacentHTML('beforeend',`<div class="marker pulse" style="left:${x}%;top:${y}%" onclick='pointTap(${JSON.stringify(p).replace(/'/g,"&apos;")})'><img class="pix" src="${icSrc}"></div>`);
+    const dm=distTo(p.lat,p.lng);
+    const distTxt=dm!=null?dm+' М':'НЕТ GPS';
+    const label=p.quest?'ЗАДАНИЕ':'ТОЧКА';
+    list.insertAdjacentHTML('beforeend',
+      `<div class="item" onclick='pointTap(${JSON.stringify(p).replace(/'/g,"&apos;")})'><div class="ic"><img class="pix" src="${icSrc}"></div><div class="body"><div class="t">${p.t}</div><div class="meta"><span>${label}</span><span>📍 ${distTxt}</span></div></div><div class="open">${p.quest?'ВЗЯТЬ':'▸'}</div></div>`);
+  });
+}
+function syncYmarks(){
+  if(!mapInst) return;
+  mapInst.geoObjects.removeAll();
+  allPoints().forEach(p=>{
+    const m=new ymaps.Placemark([p.lat,p.lng],{hintContent:p.t},{
+      iconLayout:'default#image',
+      iconImageHref:(p.photo? p.photo : A(MARK_IC[p.type]||'mk_problem.png')),
+      iconImageSize:[34,44], iconImageOffset:[-17,-44]});
+    m.events.add('click',()=>pointTap(p));
+    mapInst.geoObjects.add(m);
+  });
+}
+function addMapPoint(){
+  askPos((pos)=>{
+    S_.points.push({lat:pos.lat,lng:pos.lng,type:'problem',t:'НОВАЯ ОТМЕТКА '+(S_.points.length+1)});
+    save(); renderMapPoints(); syncYmarks(); renderDistrict(); toast('ОТМЕТКА НА ТВОЁМ МЕСТЕ ◆');
+  },()=>toast('ГЕОЛОКАЦИЯ НЕДОСТУПНА — РАЗРЕШИ GPS'));
+}
+
+/* ═══════════════════ ЭНЦИКЛОПЕДИЯ / АГЕНТЫ ═══════════════════ */
+let wikiCat='ideas';
+function renderAgents(){
+  const el=document.getElementById('agentGrid'); if(!el) return;
+  el.innerHTML=AGENTS.map((a,i)=>`
+    <div class="agent" onclick="askAgent(${i})">
+      <img class="pix" src="${A(a.ic)}">
+      <div class="an">${a.n}</div><div class="ad">${a.d.toUpperCase()}</div>
+    </div>`).join('');
+}
+function askAgent(i){ const a=AGENTS[i]; wikiCat=a.cat; renderWiki();
+  openAi();
+  setTimeout(()=>{ const inp=document.getElementById('aiInput'); inp.value=a.ask; aiSend(); },300); }
+function openArt(title, body){
+  document.getElementById('artTitle').textContent=title;
+  document.getElementById('artBody').innerHTML=body;
+  openModal('artModal');
+}
+function renderWiki(){
+  renderAgents();
+  document.getElementById('wikiChips').innerHTML=Object.entries(WIKI).map(([k,v])=>
+    `<button class="chip ${wikiCat===k?'on':''}" onclick="wikiCat='${k}';renderWiki()"><img class="pix" src="${A(v.ic)}" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">${v.name}</button>`).join('');
+  const cat=WIKI[wikiCat];
+  const extra=S_.articles.filter(a=>a.cat===wikiCat);
+  const arts=cat.arts.concat(extra.map(a=>[a.t,a.d,a.body||a.d]));
+  document.getElementById('wikiList').innerHTML=arts.map(([t,d,body],i)=>{
+    const lead=(d||'').slice(0,64).toUpperCase();
+    return `<div class="item" onclick='openArt(${JSON.stringify(t)},${JSON.stringify(body||d)})'><div class="ic"><img class="pix" src="${A(cat.ic)}"></div>
+     <div class="body"><div class="t">${t}</div><div class="meta"><span>${lead}${(d||'').length>64?'…':''}</span></div></div>
+     <div class="open">ЧИТАТЬ</div></div>`;
+  }).join('') +
+    `<div class="item" style="border-style:dashed" onclick="toast('ДОБАВЛЯТЬ СТАТЬИ МОЖЕТ АДМИН 🔒')"><div class="ic"><img class="pix" src="${A('ui_plus.png')}"></div><div class="body"><div class="t">ДОБАВИТЬ СТАТЬЮ</div></div></div>`;
+}
+
+/* ═══════════════════ ФОРУМ ═══════════════════ */
+const DEFAULT_FORUM=[
+  {author:'СОСЕД_87', t:'ШУМНЫЕ СОСЕДИ ПО НОЧАМ', body:'После 23:00 громко у 5 подъезда. Кто знает, как поговорить?', likes:24, cm:12, time:'2 ЧАСА НАЗАД'},
+  {author:'ЦВЕТОЧНЫЙ_АКТИВИСТ', t:'ПЛОЩАДКА ДЛЯ ВЫГУЛА СОБАК', body:'Предлагаю сделать площадку за домом, место есть. Нужны руки.', likes:37, cm:8, time:'5 ЧАСОВ НАЗАД'},
+  {author:'ЮРИСТ_ОНЛАЙН', t:'КАК ОСПОРИТЬ НЕЗАКОННУЮ ПЕРЕПЛАНИРОВКУ?', body:'Собрали подписи, дальше что? Кто сталкивался?', likes:12, cm:19, time:'ВЧЕРА'},
+];
+function doneCount(){ return Object.values(S_.quests).filter(s=>s==='done').length; }
+let forumTab_='recent';
+function forumTab(t,btn){ forumTab_=t; document.querySelectorAll('#forumModal .chips .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on'); renderForum(); }
+function openForum(){ renderForum(); openModal('forumModal'); }
+function renderForum(){
+  const list=document.getElementById('forumList');
+  const mine=forumTab_==='mine';
+  const items=mine ? S_.forumPosts : DEFAULT_FORUM.concat(S_.forumPosts);
+  list.innerHTML=(items.length?items:[{author:'—',t:'ТЕМ ПОКА НЕТ',body:'',likes:0,cm:0,time:''}]).map(p=>`
+    <div class="post" style="margin-bottom:10px">
+      <div class="ph"><img class="pix" src="assets/face.png"><span><span class="nick">${p.author}</span>${p.time?' · '+p.time:''}</span></div>
+      <div style="font-size:10px;font-weight:700;line-height:1.5;margin:4px 0">${p.t}</div>
+      ${p.body?`<div class="tiny" style="color:var(--ink-2)">${p.body}</div>`:''}
+      <div class="acts"><span>💬 ${p.cm||0}</span><span>◉ ${p.likes||0}</span></div>
+    </div>`).join('');
+  const comp=document.getElementById('forumCompose');
+  const en = S_.lang==='en';
+  if(doneCount()<1){
+    comp.innerHTML=`<div class="empty-note" style="margin-top:6px">
+      <img class="pix" src="assets/ui_lock.png">${en?'ONLY THOSE WHO COMPLETED AT LEAST ONE QUEST CAN CREATE TOPICS.<br>DONE':'СОЗДАВАТЬ ТЕМЫ МОГУТ ТЕ, КТО ВЫПОЛНИЛ ХОТЯ БЫ ОДНО ЗАДАНИЕ.<br>ВЫПОЛНЕНО'}: ${doneCount()} / 1</div>`;
+  } else {
+    const me=tgName();
+    comp.innerHTML=`
+      <div class="card" style="padding:12px;margin-top:6px">
+        <div class="tiny" style="color:var(--ink-3);margin-bottom:6px">${en?'YOU POST AS':'ВЫ ПИШЕТЕ КАК'}: <b style="color:var(--ink)">${me}</b></div>
+        <input id="fTitle" placeholder="${en?'TOPIC TITLE':'ЗАГОЛОВОК ТЕМЫ'}" style="margin-bottom:8px">
+        <textarea id="fBody" rows="2" placeholder="${en?'YOUR QUESTION':'СУТЬ ВОПРОСА'}"></textarea>
+        <button class="btn block acc mt8" onclick="postTopic()"><img class="pix" src="assets/ui_edit.png">${en?'CREATE TOPIC':'СОЗДАТЬ ТЕМУ'}</button>
+      </div>`;
+  }
+}
+function postTopic(){
+  const t=(document.getElementById('fTitle').value||'').trim();
+  const body=(document.getElementById('fBody').value||'').trim();
+  if(!t){ toast('НУЖЕН ЗАГОЛОВОК ТЕМЫ'); return; }
+  S_.forumPosts.unshift({author:tgName(), t:t.toUpperCase(), body:body.toUpperCase(), likes:0, cm:0, time:'ТОЛЬКО ЧТО'});
+  save(); renderForum(); toast('ТЕМА ОПУБЛИКОВАНА НА ФОРУМЕ ✦');
+}
+
+/* ═══════════════════ ВОЛОНТЁР / TELEGRAM ═══════════════════ */
+function tg(){ return (window.Telegram && window.Telegram.WebApp) || null; }
+function tgName(){
+  const t=tg();
+  if(t && t.initDataUnsafe && t.initDataUnsafe.user){ const u=t.initDataUnsafe.user;
+    return (u.username?('@'+u.username):((u.first_name||'ВОЛОНТЁР')+' '+(u.last_name||'')).trim()).toUpperCase(); }
+  return S_.tgName || 'ВОЛОНТЁР_21';
+}
+function volMail(){
+  const body=encodeURIComponent('Привет! Хочу стать волонтёром 21 в своём районе.\n\nМоё имя: '+tgName()+'\nРайон/город: \nПроблемы, которые заметил: \n1) \n2) \n3) \n');
+  location.href='mailto:21movement@gmail.com?subject='+encodeURIComponent('Хочу стать волонтёром 21')+'&body='+body;
+  toast('ОТКРЫВАЮ ПОЧТУ НА 21MOVEMENT@GMAIL.COM ✦');
+}
+
+/* ═══════════════════ СУД ═══════════════════ */
+function openCourt(){ renderDisputes(); openModal('courtModal'); }
+function renderDisputes(){
+  document.getElementById('disputeList').innerHTML=S_.disputes.map((d,i)=>{
+    const tot=d.yes+d.no, yp=Math.round(d.yes/tot*100), voted=S_.voted[i];
+    return `<div class="dispute"><div class="who"><img class="pix" src="${A('ui_vote.png')}">СПОР #${i+1} · ГОЛОСОВАНИЕ ИДЁТ</div>
+      <div style="font-size:8.5px">${d.t}</div>
+      <div class="vbar"><i class="y" style="width:${yp}%"></i><i class="n" style="width:${100-yp}%"></i></div>
+      <div class="votes">
+        <button class="yes ${voted==='y'?'on':''}" onclick="vote(${i},'y',this)">✦ ЗА · ${d.yes}</button>
+        <button class="no ${voted==='n'?'on':''}" onclick="vote(${i},'n',this)">● ПРОТИВ · ${d.no}</button>
+      </div></div>`;
+  }).join('');
+}
+function vote(i,v,btn){
+  if(S_.voted[i]){ toast('ВЫ УЖЕ ГОЛОСОВАЛИ'); return; }
+  S_.voted[i]=v; if(v==='y')S_.disputes[i].yes++; else S_.disputes[i].no++;
+  S_.karma+=2; save(); renderDisputes(); renderStats(); toast('ГОЛОС ПРИНЯТ · +2 КАРМЫ ◉');
+}
+
+/* ═══════════════════ КРАУДФАНДИНГ ═══════════════════ */
+function openCrowd(){ renderCrowd(); openModal('crowdModal'); }
+function renderCrowd(){
+  document.getElementById('walletBig').textContent=S_.wallet;
+  document.getElementById('projectList').innerHTML=S_.projects.map((p,i)=>{
+    const pct=Math.round(p.have/p.goal*100);
+    return `<div class="item" style="cursor:default"><div class="ic"><img class="pix" src="${A(p.ic)}"></div>
+      <div class="body"><div class="t">${p.t}</div>
+        <div class="bar" style="margin:4px 0"><i class="${pct>60?'acc':''}" style="width:${pct}%"></i></div>
+        <div class="meta"><span>${p.have.toLocaleString('ru')} / ${p.goal.toLocaleString('ru')} ◆</span><span>${pct}%</span><span>ДО КОНЦА: ${p.days} ДН.</span></div>
+      </div><div class="open" onclick="fund(${i})">+ ◆</div></div>`;
+  }).join('')+`<button class="btn block" style="margin-bottom:0" onclick="toast('ПРОЕКТ ПЕРЕДАН ЖИТЕЛЯМ ◆')"><img class="pix" src="assets/ui_plus.png">СОЗДАТЬ ПРОЕКТ</button>`;
+  renderBudget([['БЛАГОУСТРОЙСТВО',40],['ИНФРАСТРУКТУРА',25],['БЕЗОПАСНОСТЬ',15],['ЭКОЛОГИЯ',10],['ОБРАЗОВАНИЕ',10]]);
+}
+function fund(i){ if(S_.wallet<50){ toast('БЮДЖЕТ ПУСТ · ВНЕСИТЕ СРЕДСТВА'); return; }
+  S_.wallet-=50; S_.projects[i].have+=50; S_.karma+=3; save(); renderCrowd(); renderStats(); toast('+50 ◆ В ПРОЕКТ · +3 КАРМЫ'); }
+function donate(n){ S_.wallet+=n; save(); renderCrowd(); renderStats(); toast(n+' ◆ В ОБЩЕМ КОШЕЛЬКЕ'); }
+function renderBudget(rows){
+  const total=2500000;
+  document.getElementById('budgetBars').innerHTML=
+    `<div class="tiny" style="margin-bottom:8px">БЮДЖЕТ РАЙОНА: <b style="color:var(--ink)">${total.toLocaleString('ru')} ◆</b></div>`+
+    rows.map(([n,p])=>`<div style="margin-bottom:8px"><div class="row between"><span class="tiny">${n}</span><span class="tiny">${p}% · ${((total*p/100)|0).toLocaleString('ru')} ◆</span></div>
+      <div class="bar" style="margin:2px 0"><i class="${p>=40?'acc':''}" style="width:${p}%"></i></div></div>`).join('');
+}
+function aiBudget(){
+  const probs=S_.points.filter(p=>p.type==='problem').length;
+  let rows=[['БЛАГОУСТРОЙСТВО',35+probs*2],['ИНФРАСТРУКТУРА',25],['БЕЗОПАСНОСТЬ',12+probs],['ЭКОЛОГИЯ',15],['ОБРАЗОВАНИЕ',13]];
+  const sum=rows.reduce((a,r)=>a+r[1],0); rows=rows.map(([n,p])=>[n,Math.round(p/sum*100)]);
+  renderBudget(rows); toast('AI ПЕРЕСЧИТАЛ ПРИОРИТЕТЫ ПО ДАННЫМ РАЙОНА ⚡');
+}
+
+/* ═══════════════════ КАСТОМИЗАЦИЯ ═══════════════════ */
+function openCustom(){
+  document.getElementById('hatGrid').innerHTML=HATS.map(f=>`<button class="${S_.hat===f?'sel':''}" onclick="wear('hat','${f}')"><img class="pix" src="${A(f)}"></button>`).join('');
+  document.getElementById('accGrid').innerHTML=ACCS.map(f=>`<button class="${S_.acc===f?'sel':''}" onclick="wear('acc','${f}')"><img class="pix" src="${A(f)}"></button>`).join('')
+    +`<button class="${!S_.acc?'sel':''}" onclick="wear('acc',null)"><span style="font-size:14px">✕</span></button>`;
+  openModal('customModal');
+}
+function wear(k,f){ if(k==='hat')S_.hat=f; else S_.acc=f; save(); renderStats(); openCustom(); }
+
+/* ═══════════════════ ИНВЕНТАРЬ / АРТЕФАКТЫ ═══════════════════ */
+function grantArtifact(q){
+  let aid = q.art;
+  const art = ARTIFACTS.find(a=>a.id===aid);
+  if(!aid || !art || art.excl){
+    aid = (ARTIFACTS.find(a=>!a.excl && !S_.inventory[a.id])||{}).id;  /* следующий НЕ эксклюзив */
+  }
+  if(!aid || S_.inventory[aid]) return null;                 /* уже выдан / нечего */
+  S_.inventory[aid] = {from: (q.t||'ЗАДАНИЕ РАЙОНА').slice(0,26)};
+  S_.invNew = aid; save();
+  return ARTIFACTS.find(a=>a.id===aid) || null;
+}
+function invOwned(){ return ARTIFACTS.filter(a=>S_.inventory[a.id]); }
+function invStats(){
+  const n = invOwned().length;
+  return [['СИЛ',4+Math.floor(n/3)],['ИНТ',9+Math.floor(n/2)],['ЗАЩ',3+Math.floor(n/3)],
+          ['ЛОВ',6+Math.floor(n/3)],['УДЧ',5+n],['XP','+'+(n*10)+'%']];
+}
+function openInv(){
+  const owned = invOwned().map(a=>a.id);
+  document.getElementById('invIntro').innerHTML =
+    tr('АРТЕФАКТЫ — НАГРАДА ЗА ЗАДАНИЯ РАЙОНА.')+'<br>'+
+    tr('НЕ КУПИТЬ, МОЖНО ТОЛЬКО ЗАСЛУЖИТЬ.')+' '+
+    (S_.lang==='en'?'COLLECTED':'СОБРАНО')+': <b>'+owned.length+'</b>/'+ARTIFACTS.length;
+  document.getElementById('invStats').innerHTML = invStats()
+    .map(([k,v])=>`<span>${k} <b>${v}</b></span>`).join('');
+  const en = S_.lang==='en';
+  document.getElementById('invGrid').innerHTML = ARTIFACTS.map(a=>{
+    const got = S_.inventory[a.id];
+    if(got) return `<div class="slot">${S_.invNew===a.id?`<span class="nb">${en?'NEW':'НОВОЕ!'}</span>`:''}<img class="pix" src="${A(a.f)}">
+        <span class="nm">${en?a.en:a.n}</span><span class="qd">★ ${en?a.eq:a.q}</span></div>`;
+    return `<div class="slot locked"><span class="qm">${a.excl?`<img class="pix" src="${A('ui_lock.png')}" style="width:40px;height:40px;opacity:.55">`:'?'}</span><span class="nm">???</span>
+        <span class="qd">${a.excl?(en?'SECRET CODE':'СЕКРЕТНЫЙ КОД'):(en?'FROM A QUEST':'ЗА ЗАДАНИЕ')}</span></div>`;
+  }).join('');
+  S_.invNew = null; save();
+  openModal('invModal');
+}
+
+/* ═══════════════════ ИИ-АГЕНТ ═══════════════════ */
+const AI_RULES=[
+  [['фреско','fresco','венера','ресурсо','ресурс-ориент','автоматиз','утоп'], 'ЖАК ФРЕСКО — инженер и автор «ПРОЕКТА ВЕНЕРА»: ресурсы планеты — общее достояние, автоматизация освобождает людей от рутины, а не плодит безработицу. Читай в ЭНЦИКЛОПЕДИЯ → ИДЕИ 🤖'],
+  [['кропоткин','взаимопомощь','анарх','общин','самоуправ','князь'], 'КРОПОТКИН: выживают не самые злые, а самые дружные. Взаимопомощь — двигатель эволюции; община решает дела сама, кругом соседей. Это и есть наш СУД СООБЩЕСТВА и БЮДЖЕТ ✊ Раздел: ЭНЦИКЛОПЕДИЯ → ИДЕИ.'],
+  [['автоном','независим','самому','своими руками','выжива'], 'АВТОНОМНАЯ ЖИЗНЬ: своя вода (фильтр + сбор дождя), своя энергия (солнце + ветер), своя еда (огород + компост), общий инструмент и взаимопомощь двора. Всё это — в ЭНЦИКЛОПЕДИИ 📚'],
+  [['биер','киберсин','управле','данные района','ai','ии'], 'КИБЕРНЕТИКА БИЕРА («Киберсин»): данные об общих ресурсах позволяют распределять по потребностям честнее денег. В «21» так работает AI-анализ бюджета района ⚙️'],
+  [['вод','пить','фильтр','капл'], 'ВОДА: песок → уголь → ткань, 3 слоя. Кипяти 10 минут. Точка воды — на карте 💧'],
+  [['ремонт','чин','слом','доск','молоток'], 'РЕМОНТ: возьми молоток и отвёртку, открой квест «ПОЧИНИТЬ СКАМЕЙКУ» — там пошагово 🔧'],
+  [['книг','знан','энцикл','стат'], 'ЗНАНИЯ: вкладка ЭНЦИКЛОПЕДИЯ 📚 — вода, энергия, еда, ремонт, право. Делись книгами с соседями.'],
+  [['суд','спор','конфликт','голос'], 'СУД: открой СУД СООБЩЕСТВА на вкладке квестов ⚖️ — спор решается голосованием соседей.'],
+  [['квест','задан','мисси','дела'], 'КВЕСТЫ: вкладка ⚔️ — помогай соседям, чини двор, получай XP и карму. Каждое действие делает тебя сильнее.'],
+  [['ед','еда','огород','голод'], 'ЕДА: огород на подоконнике, компост из отходов, общие закупки впрок 🍎 — раздел ЭНЦИКЛОПЕДИЯ.'],
+  [['энерг','свет','ламп','электр'], 'ЭНЕРГИЯ: светодиоды, солнечная панель из хлама, ветряк во дворе ⚡ — раздел ЭНЦИКЛОПЕДИЯ.'],
+  [['деньг','кошел','крауд','сбор','бюджет'], 'БЮДЖЕТ на вкладке квестов ◆ — соседи собирают средства, AI распределяет по приоритету.'],
+  [['21','субботник','ресурс','пай'], '21-ГО ЧИСЛА — ДЕНЬ РЕСУРСА: вода, еда и энергия перераспределяются по району. Не пропусти ✦'],
+];
+function aiAnswer(t){
+  t=t.toLowerCase();
+  for(const [keys,ans] of AI_RULES) if(keys.some(k=>t.includes(k))) return ans;
+  return 'Я ПОКА УЧУСЬ. СПРОСИ ПРО: ВОДУ, РЕМОНТ, КВЕСТЫ, СУД, КОШЕЛЁК ИЛИ 21-Е ЧИСЛО ✦';
+}
+function openAi(){
+  openModal('aiModal');
+  const chat=document.getElementById('aiChat');
+  if(!chat.dataset.greeted){ chat.dataset.greeted=1;
+    chat.innerHTML=`<div class="msg"><div class="av"><img class="pix" src="${A('robot.png')}"></div><div class="bubble2">ЧЕМ МОГУ ПОМОЧЬ? Я ЗНАЮ ПРО ВОДУ, РЕМОНТ, КВЕСТЫ, СУД И БЮДЖЕТ.</div></div>`;
+    document.getElementById('aiQuick').innerHTML=['ВОДА?','РЕМОНТ?','КВЕСТ?','СУД?','БЮДЖЕТ?','21-Е?']
+      .map(q=>`<button class="chip" onclick="document.getElementById('aiInput').value='${q}';aiSend()">${q}</button>`).join('');
+  }
+}
+function aiSend(){
+  const inp=document.getElementById('aiInput'); const v=inp.value.trim(); if(!v)return;
+  const chat=document.getElementById('aiChat');
+  chat.insertAdjacentHTML('beforeend',`<div class="msg me"><div class="av"><img class="pix" src="${A('face.png')}"></div><div class="bubble2">${v}</div></div>`);
+  inp.value='';
+  setTimeout(()=>{ chat.insertAdjacentHTML('beforeend',`<div class="msg"><div class="av"><img class="pix" src="${A('robot.png')}"></div><div class="bubble2">${aiAnswer(v)}</div></div>`); chat.scrollTop=chat.scrollHeight; }, 500);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+/* ═══════════════════ ДЕНЬ РЕСУРСА ═══════════════════ */
+function checkResourceDay(manual){
+  const is21=new Date().getDate()===21;
+  if(is21 && !S_.resSeen){ document.getElementById('resDay').classList.add('on'); S_.resSeen=true; save(); }
+  else if(manual){ toast(is21?'СЕГОДНЯ — ДЕНЬ РЕСУРСА ✦':'СЛЕДУЮЩИЙ ДЕНЬ РЕСУРСА — 21-ГО ЧИСЛА'); if(is21)document.getElementById('resDay').classList.add('on'); }
+}
+function closeResDay(){ document.getElementById('resDay').classList.remove('on'); S_.karma+=21; S_.coins+=21; save(); renderStats(); toast('ПАЁК ПОЛУЧЕН · +21 ◆ +21 КАРМЫ ✦'); }
+
+/* ═══════════════════ АДМИН ═══════════════════ */
+const ADMIN_PASS = '21admin';   /* ← пароль админ-панели, поменяй на свой */
+function openAdmin(){
+  if(S_.admin){ openModal('adminModal'); return; }
+  document.getElementById('adminPass').value='';
+  openModal('adminPassModal');
+  setTimeout(()=>{ const f=document.getElementById('adminPass'); if(f) f.focus(); },150);
+}
+function adminLogin(){
+  const v=(document.getElementById('adminPass').value||'').trim();
+  if(v===ADMIN_PASS){
+    S_.admin=true; save();
+    closeModal('adminPassModal'); openModal('adminModal');
+    toast('ДОСТУП РАЗРЕШЁН ⚡');
+  } else {
+    toast('НЕВЕРНЫЙ ПАРОЛЬ');
+    document.getElementById('adminPass').value='';
+  }
+}
+function admTab(t,btn){
+  document.querySelectorAll('#adminModal .chip').forEach(c=>c.classList.remove('on')); btn.classList.add('on');
+  ['quest','problem','post','reward','stats'].forEach(x=>{ const el=document.getElementById('adm'+x[0].toUpperCase()+x.slice(1)); if(el) el.style.display=x===t?'block':'none'; });
+  if(t==='stats') renderAdminStats();
+  if(t==='reward'){ if(typeof editRewardCancel==='function') editRewardCancel(); renderAdminRewards(); }
+}
+/* GPS в форму задания */
+function getMyPos(){
+  toast('ИЩУ СПУТНИКИ...');
+  askPos(p=>{
+    document.getElementById('aqLat').value=p.lat.toFixed(6);
+    document.getElementById('aqLng').value=p.lng.toFixed(6);
+    toast('КООРДИНАТЫ ПОЛУЧЕНЫ 📍');
+  },()=>toast('НЕ УДАЛОСЬ ПОЛУЧИТЬ GPS'));
+}
+/* Чтение выбранной картинки в dataURL (фото задания) */
+function readFile(inputId, cb){
+  const inp=document.getElementById(inputId);
+  const f=inp.files&&inp.files[0]; if(!f){ cb(null); return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    // ужимаем до 640px, чтобы не раздувать localStorage
+    const img=new Image();
+    img.onload=()=>{
+      const max=640; const s=Math.min(1,max/Math.max(img.width,img.height));
+      const w=Math.round(img.width*s), h=Math.round(img.height*s);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+      x.drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.72));
+    };
+    img.onerror=()=>cb(r.result);
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+document.addEventListener('change',e=>{
+  if(e.target && e.target.id==='aqFile'){
+    readFile('aqFile',url=>{
+      const prev=document.getElementById('aqPrev');
+      if(url){ prev.src=url; prev.style.display='block'; }
+      else prev.style.display='none';
+    });
+  }
+});
+/* Публикация задания: обязательны название/описание/координаты */
+function addQuest(){
+  const t=(document.getElementById('aqName').value||'').trim();
+  const desc=(document.getElementById('aqDesc').value||'').trim();
+  const lat=parseFloat(document.getElementById('aqLat').value);
+  const lng=parseFloat(document.getElementById('aqLng').value);
+  const photo=document.getElementById('aqPrev').src && document.getElementById('aqPrev').style.display!=='none'
+    ? document.getElementById('aqPrev').src : null;
+  if(!desc){ toast('НУЖНО ОПИСАНИЕ ЗАДАНИЯ'); return; }
+  if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180){ toast('НУЖНЫ КООРДИНАТЫ: ШИРОТА И ДОЛГОТА'); return; }
+  const xp=Math.max(10,parseInt(document.getElementById('aqXp').value)||50);
+  const karma=Math.max(2,parseInt(document.getElementById('aqKarma').value)||10);
+  S_.userQuests=S_.userQuests||[];
+  const q={ id:'u'+Date.now().toString(36),
+    ic:'q_'+['bench','recycle','plant','lamp','water','hands'][Math.floor(Math.random()*6)]+'.png',
+    t:(t||'НОВОЕ ЗАДАНИЕ').toUpperCase(), desc:desc.toUpperCase(),
+    lat, lng, xp, karma, badge:'bd_help.png', photo };
+  S_.userQuests.push(q);
+  ['aqName','aqDesc','aqLat','aqLng'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aqFile').value=''; document.getElementById('aqPrev').style.display='none';
+  save(); renderQuests(); renderMapPoints(); syncYmarks(); renderDistrict(); renderStats();
+  toast('ЗАДАНИЕ ОПУБЛИКОВАНО НА КАРТЕ ⚔');
+  closeModal('adminModal');
+}
+function admIconSetup(elId,cb){
+  document.getElementById(elId).innerHTML=ICON_POOL.map((f,i)=>
+    `<button class="chip ${i===0?'on':''}" data-ic="${f}" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')"><img class="pix" src="${A(f)}" style="width:18px;height:18px;vertical-align:middle"></button>`).join('');
+}
+function pickedIcon(id){ const e=document.querySelector('#'+id+' .chip.on'); return e?e.dataset.ic:ICON_POOL[0]; }
+
+/* ── Эксклюзивные награды за пароль ── */
+let _rewardEditId=null;
+function addRewardItem(){
+  const n=(document.getElementById('arName').value||'').trim();
+  const d=(document.getElementById('arDesc').value||'').trim();
+  const c=(document.getElementById('arCode').value||'').trim();
+  if(!n){ toast('НУЖНО НАЗВАНИЕ АЙТЕМА'); return; }
+  if(!d){ toast('НУЖНО ОПИСАНИЕ НАГРАДЫ'); return; }
+  if(!c){ toast('НУЖЕН СЕКРЕТНЫЙ ПАРОЛЬ'); return; }
+  const xp=Math.max(10,parseInt(document.getElementById('arXp').value)||80);
+  const karma=Math.max(2,parseInt(document.getElementById('arKarma').value)||20);
+  S_.rewards=S_.rewards||[];
+  if(_rewardEditId){
+    const r=S_.rewards.find(x=>x.id===_rewardEditId);
+    if(r){ r.n=n.toUpperCase(); r.d=d.toUpperCase(); r.code=c.toUpperCase().trim(); r.xp=xp; r.karma=karma; }
+    toast('НАГРАДА ОБНОВЛЕНА ✓');
+  } else {
+    S_.rewards.push({ id:'r'+Date.now().toString(36), n:n.toUpperCase(), d:d.toUpperCase(),
+      code:c.toUpperCase().trim(), xp, karma });
+    toast('НАГРАДА СОЗДАНА 🔑 РАЗДАЙ ПАРОЛЬ: '+c.toUpperCase());
+  }
+  save(); editRewardCancel(false); renderAdminRewards();
+}
+function editReward(id){
+  const r=(S_.rewards||[]).find(x=>x.id===id); if(!r) return;
+  _rewardEditId=id;
+  document.getElementById('arName').value=r.n;
+  document.getElementById('arDesc').value=r.d;
+  document.getElementById('arCode').value=r.code;
+  document.getElementById('arXp').value=r.xp;
+  document.getElementById('arKarma').value=r.karma;
+  document.getElementById('arSubmit').innerHTML='<img class="pix" src="assets/mk_done.png">СОХРАНИТЬ ИЗМЕНЕНИЯ';
+  document.getElementById('arCancel').style.display='block';
+  document.getElementById('arName').scrollIntoView({block:'center'});
+}
+function editRewardCancel(clear){
+  _rewardEditId=null;
+  if(clear!==false) ['arName','arDesc','arCode'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('arXp').value=80; document.getElementById('arKarma').value=20;
+  document.getElementById('arSubmit').innerHTML='<img class="pix" src="assets/ui_plus.png">СОЗДАТЬ НАГРАДУ';
+  document.getElementById('arCancel').style.display='none';
+}
+function renderAdminRewards(){
+  const el=document.getElementById('arList'); if(!el) return;
+  if(!S_.rewards || !S_.rewards.length){ el.innerHTML=`<div class="empty-note"><img class="pix" src="${A('ui_lock.png')}">НАГРАД ПОКА НЕТ. СОЗДАЙ ПЕРВУЮ.</div>`; return; }
+  el.innerHTML='<label class="f">СОЗДАННЫЕ НАГРАДЫ</label>'+S_.rewards.map(r=>{
+    const got=(S_.unlocked||[]).includes(r.id);
+    return `<div style="border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:10px;margin-bottom:8px;background:var(--card)">
+      <div class="nm" style="font-size:8px;font-weight:700">${r.n}</div>
+      <div class="tiny mt8" style="font-size:7.5px">🔑 ПАРОЛЬ: <b>${r.code}</b> · ⚡${r.xp} · ◉${r.karma}${got?' · ОТКРЫТА':''}</div>
+      <div class="tiny mt8" style="white-space:pre-line;font-size:7px;color:var(--ink-3)">${r.d.slice(0,120)}${r.d.length>120?'…':''}</div>
+      <div class="row mt8" style="gap:8px">
+        <button class="btn acc" style="font-size:7px;padding:6px 10px" onclick="editReward('${r.id}')">РЕДАКТИРОВАТЬ</button>
+        <button class="btn ghost" style="font-size:7px;padding:6px 10px" onclick="delReward('${r.id}')">УДАЛИТЬ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function delReward(id){
+  S_.rewards=(S_.rewards||[]).filter(r=>r.id!==id);
+  save(); renderAdminRewards(); toast('НАГРАДА УДАЛЕНА');
+}
+function addProblem(){
+  const name=(document.getElementById('apName').value||'НОВАЯ ПРОБЛЕМА').toUpperCase();
+  const ic=pickedIcon('apIcons');
+  S_.points.push({lat:55.75+Math.random()*.012, lng:37.61+Math.random()*.012, type:'problem', t:name, ic});
+  document.getElementById('apName').value='';
+  save(); renderMapPoints(); syncYmarks(); renderDistrict();
+  toast('ПРОБЛЕМА ДОБАВЛЕНА НА КАРТУ ◆');
+}
+function addPost(){
+  const t=(document.getElementById('apTitle').value||'НОВОСТЬ РАЙОНА').toUpperCase();
+  const txt=(document.getElementById('apText').value||'21').toUpperCase();
+  S_.posts.unshift({ic:pickedIcon('apPostIcons'), t, txt, likes:0});
+  document.getElementById('apTitle').value=''; document.getElementById('apText').value='';
+  save(); renderFeed(); toast('ПОСТ ОПУБЛИКОВАН В ЛЕНТУ ✦');
+}
+function renderAdminStats(){
+  const max=Math.max(...S_.acts);
+  document.getElementById('actChart').innerHTML=S_.acts.map((v,i)=>`<i d="${['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'][i]}" style="height:${v/max*100}%"></i>`).join('');
+  const done=Object.values(S_.quests).filter(s=>s==='done').length;
+  document.getElementById('admStatNums').innerHTML=[
+    ['ui_trophy.png',S_.xp,'ВСЕГО XP'],['ui_heart.png',S_.karma,'КАРМА'],['nav_sword.png',done,'КВЕСТОВ'],['mk_problem.png',S_.points.filter(p=>p.type==='problem').length,'ПРОБЛЕМ']
+  ].map(([f,v,n])=>`<div><img class="ic pix" src="${A(f)}"><b>${v}</b><span>${n}</span></div>`).join('');
+}
+
+/* ═══════════════════ QR + СТИКЕР ═══════════════════ */
+function openSticker(){
+  openModal('stickerModal');
+  const url=location.href;
+  drawQR(document.getElementById('qrCanvas'), url);
+}
+function downloadSticker(){
+  const c=document.createElement('canvas'); c.width=480; c.height=320; const x=c.getContext('2d');
+  x.fillStyle='#f4f1ea'; x.fillRect(0,0,c.width,c.height);
+  const st=new Image(); st.src=A('sticker.png');
+  st.onload=()=>{
+    x.imageSmoothingEnabled=false;
+    x.drawImage(st, 10, 30, 220, 220);
+    // QR
+    const tmp=document.getElementById('qrCanvas');
+    x.drawImage(tmp, 300, 60, 160, 160);
+    x.fillStyle='#121212'; x.font='14px "Press Start 2P", monospace'; x.textAlign='center';
+    x.fillText('21 — ГОРОД, КОТОРЫЙ', 240, 300);
+    const a=document.createElement('a'); a.download='sticker-21.png'; a.href=c.toDataURL('image/png'); a.click();
+    toast('СТИКЕР СОХРАНЁН ✦');
+  };
+}
+
+/* ── Мини QR-генератор (byte mode, ECC L, версии 1–9) ── */
+function drawQR(canvas, text){
+  const ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,150,150);
+  let m; try{ m=qrMatrix(text); }catch(e){ m=qrFallback(text); }
+  const n=m.length, size=Math.floor(140/n), off=Math.floor((150-n*size)/2);
+  ctx.fillStyle='#121212';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++) if(m[r][c]) ctx.fillRect(off+c*size, off+r*size, size, size);
+}
+function qrFallback(text){ // декоративный пиксельный паттерн
+  const n=25, m=Array.from({length:n},()=>Array(n).fill(0));
+  let h=0; for(const ch of text)h=(h*31+ch.charCodeAt(0))>>>0;
+  const finder=(r0,c0)=>{for(let r=0;r<7;r++)for(let c=0;c<7;c++){const e=r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4);m[r0+r][c0+c]=e?1:0;}};
+  finder(0,0);finder(0,n-7);finder(n-7,0);
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(m[r][c])continue;if(r<8&&c<8||r<8&&c>=n-8||r>=n-8&&c<8)continue;h=(h*1103515245+12345)>>>0;m[r][c]=(h>>((r+c)%24))&1;}
+  return m;
+}
+/* Встроенный QR-генератор (Kazuhiko Arase, MIT) */
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  //---------------------------------------------------------------------
+  // qrcode
+  //---------------------------------------------------------------------
+
+  /**
+   * qrcode
+   * @param typeNumber 1 to 40
+   * @param errorCorrectionLevel 'L','M','Q','H'
+   */
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = [];
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var setupTypeNumber = function(test) {
+
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
+
+    var setupTypeInfo = function(test, maskPattern) {
+
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+
+      // vertical
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
+        } else {
+          _modules[_moduleCount - 15 + i][8] = mod;
+        }
+      }
+
+      // horizontal
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
+        }
+      }
+
+      // fixed module
+      _modules[_moduleCount - 8][8] = (!test);
+    };
+
+    var mapData = function(data, maskPattern) {
+
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
+
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
+
+        if (col == 6) col -= 1;
+
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
+            }
+          }
+
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      // calc num max data.
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw 'code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')';
+      }
+
+      // end code
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      // padding
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      // padding
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw row + ',' + col;
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      if (_typeNumber < 1) {
+        var typeNumber = 1;
+
+        for (; typeNumber < 40; typeNumber++) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
+          var buffer = qrBitBuffer();
+
+          for (var i = 0; i < _dataList.length; i++) {
+            var data = _dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+            data.write(buffer);
+          }
+
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i++) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+
+          if (buffer.getLengthInBits() <= totalDataCount * 8) {
+            break;
+          }
+        }
+
+        _typeNumber = typeNumber;
+      }
+
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
+        }
+
+        qrHtml += '</tr>';
+      }
+
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
+
+      return qrHtml;
+    };
+
+    _this.createSvgTag = function(cellSize, margin, alt, title) {
+
+      var opts = {};
+      if (typeof arguments[0] == 'object') {
+        // Called by options.
+        opts = arguments[0];
+        // overwrite cellSize and margin.
+        cellSize = opts.cellSize;
+        margin = opts.margin;
+        alt = opts.alt;
+        title = opts.title;
+      }
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      // Compose alt property surrogate
+      alt = (typeof alt === 'string') ? {text: alt} : alt || {};
+      alt.text = alt.text || null;
+      alt.id = (alt.text) ? alt.id || 'qrcode-description' : null;
+
+      // Compose title property surrogate
+      title = (typeof title === 'string') ? {text: title} : title || {};
+      title.text = title.text || null;
+      title.id = (title.text) ? title.id || 'qrcode-title' : null;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : '';
+      qrSvg += ' viewBox="0 0 ' + size + ' ' + size + '" ';
+      qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+      qrSvg += (title.text || alt.text) ? ' role="img" aria-labelledby="' +
+          escapeXml([title.id, alt.id].join(' ').trim() ) + '"' : '';
+      qrSvg += '>';
+      qrSvg += (title.text) ? '<title id="' + escapeXml(title.id) + '">' +
+          escapeXml(title.text) + '</title>' : '';
+      qrSvg += (alt.text) ? '<description id="' + escapeXml(alt.id) + '">' +
+          escapeXml(alt.text) + '</description>' : '';
+      qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    _this.createDataURL = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      return createDataURL(size, size, function(x, y) {
+        if (min <= x && x < max && min <= y && y < max) {
+          var c = Math.floor( (x - min) / cellSize);
+          var r = Math.floor( (y - min) / cellSize);
+          return _this.isDark(r, c)? 0 : 1;
+        } else {
+          return 1;
+        }
+      } );
+    };
+
+    _this.createImgTag = function(cellSize, margin, alt) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+
+      var img = '';
+      img += '<img';
+      img += '\u0020src="';
+      img += _this.createDataURL(cellSize, margin);
+      img += '"';
+      img += '\u0020width="';
+      img += size;
+      img += '"';
+      img += '\u0020height="';
+      img += size;
+      img += '"';
+      if (alt) {
+        img += '\u0020alt="';
+        img += escapeXml(alt);
+        img += '"';
+      }
+      img += '/>';
+
+      return img;
+    };
+
+    var escapeXml = function(s) {
+      var escaped = '';
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charAt(i);
+        switch(c) {
+        case '<': escaped += '&lt;'; break;
+        case '>': escaped += '&gt;'; break;
+        case '&': escaped += '&amp;'; break;
+        case '"': escaped += '&quot;'; break;
+        default : escaped += c; break;
+        }
+      }
+      return escaped;
+    };
+
+    var _createHalfASCII = function(margin) {
+      var cellSize = 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r1, r2, p;
+
+      var blocks = {
+        '██': '█',
+        '█ ': '▀',
+        ' █': '▄',
+        '  ': ' '
+      };
+
+      var blocksLastLineNoMargin = {
+        '██': '▀',
+        '█ ': '▀',
+        ' █': ' ',
+        '  ': ' '
+      };
+
+      var ascii = '';
+      for (y = 0; y < size; y += 2) {
+        r1 = Math.floor((y - min) / cellSize);
+        r2 = Math.floor((y + 1 - min) / cellSize);
+        for (x = 0; x < size; x += 1) {
+          p = '█';
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+            p = ' ';
+          }
+
+          if (min <= x && x < max && min <= y+1 && y+1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+            p += ' ';
+          }
+          else {
+            p += '█';
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
+        }
+
+        ascii += '\n';
+      }
+
+      if (size % 2 && margin > 0) {
+        return ascii.substring(0, ascii.length - size - 1) + Array(size+1).join('▀');
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.createASCII = function(cellSize, margin) {
+      cellSize = cellSize || 1;
+
+      if (cellSize < 2) {
+        return _createHalfASCII(margin);
+      }
+
+      cellSize -= 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r, p;
+
+      var white = Array(cellSize+1).join('██');
+      var black = Array(cellSize+1).join('  ');
+
+      var ascii = '';
+      var line = '';
+      for (y = 0; y < size; y += 1) {
+        r = Math.floor( (y - min) / cellSize);
+        line = '';
+        for (x = 0; x < size; x += 1) {
+          p = 1;
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+            p = 0;
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          line += p ? white : black;
+        }
+
+        for (r = 0; r < cellSize; r += 1) {
+          ascii += line + '\n';
+        }
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.renderTo2dContext = function(context, cellSize) {
+      cellSize = cellSize || 2;
+      var length = _this.getModuleCount();
+      for (var row = 0; row < length; row++) {
+        for (var col = 0; col < length; col++) {
+          context.fillStyle = _this.isDark(row, col) ? 'black' : 'white';
+          context.fillRect(row * cellSize, col * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrcode.stringToBytes
+  //---------------------------------------------------------------------
+
+  qrcode.stringToBytesFuncs = {
+    'default' : function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        bytes.push(c & 0xff);
+      }
+      return bytes;
+    }
+  };
+
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['default'];
+
+  //---------------------------------------------------------------------
+  // qrcode.createStringToBytes
+  //---------------------------------------------------------------------
+
+  /**
+   * @param unicodeData base64 string of byte array.
+   * [16bit Unicode],[16bit Bytes], ...
+   * @param numChars
+   */
+  qrcode.createStringToBytes = function(unicodeData, numChars) {
+
+    // create conversion map.
+
+    var unicodeMap = function() {
+
+      var bin = base64DecodeInputStream(unicodeData);
+      var read = function() {
+        var b = bin.read();
+        if (b == -1) throw 'eof';
+        return b;
+      };
+
+      var count = 0;
+      var unicodeMap = {};
+      while (true) {
+        var b0 = bin.read();
+        if (b0 == -1) break;
+        var b1 = read();
+        var b2 = read();
+        var b3 = read();
+        var k = String.fromCharCode( (b0 << 8) | b1);
+        var v = (b2 << 8) | b3;
+        unicodeMap[k] = v;
+        count += 1;
+      }
+      if (count != numChars) {
+        throw count + ' != ' + numChars;
+      }
+
+      return unicodeMap;
+    }();
+
+    var unknownChar = '?'.charCodeAt(0);
+
+    return function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        if (c < 128) {
+          bytes.push(c);
+        } else {
+          var b = unicodeMap[s.charAt(i)];
+          if (typeof b == 'number') {
+            if ( (b & 0xff) == b) {
+              // 1byte
+              bytes.push(b);
+            } else {
+              // 2bytes
+              bytes.push(b >>> 8);
+              bytes.push(b & 0xff);
+            }
+          } else {
+            bytes.push(unknownChar);
+          }
+        }
+      }
+      return bytes;
+    };
+  };
+
+  //---------------------------------------------------------------------
+  // QRMode
+  //---------------------------------------------------------------------
+
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
+
+  //---------------------------------------------------------------------
+  // QRErrorCorrectionLevel
+  //---------------------------------------------------------------------
+
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
+
+  //---------------------------------------------------------------------
+  // QRMaskPattern
+  //---------------------------------------------------------------------
+
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
+
+  //---------------------------------------------------------------------
+  // QRUtil
+  //---------------------------------------------------------------------
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw 'bad maskPattern:' + maskPattern;
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        // 1 - 9
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 27) {
+
+        // 10 - 26
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 41) {
+
+        // 27 - 40
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else {
+        throw 'type:' + type;
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      // LEVEL1
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      // LEVEL2
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      // LEVEL3
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // LEVEL4
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // QRMath
+  //---------------------------------------------------------------------
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    // initialize tables
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw 'glog(' + n + ')';
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrPolynomial
+  //---------------------------------------------------------------------
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw num.length + '/' + shift;
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      // recursive call
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // QRRSBlock
+  //---------------------------------------------------------------------
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+
+      // L
+      // M
+      // Q
+      // H
+
+      // 1
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+
+      // 2
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+
+      // 3
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+
+      // 4
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+
+      // 5
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+
+      // 6
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+
+      // 7
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+
+      // 8
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+
+      // 9
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+
+      // 10
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+
+      // 11
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+
+      // 12
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+
+      // 13
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+
+      // 14
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+
+      // 15
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+
+      // 16
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+
+      // 17
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+
+      // 18
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+
+      // 19
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+
+      // 20
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+
+      // 21
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+
+      // 22
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+
+      // 23
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+
+      // 24
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+
+      // 25
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+
+      // 26
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+
+      // 27
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+
+      // 28
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+
+      // 29
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+
+      // 30
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+
+      // 31
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+
+      // 32
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+
+      // 33
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+
+      // 34
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+
+      // 35
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+
+      // 36
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+
+      // 37
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+
+      // 38
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+
+      // 39
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+
+      // 40
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw 'bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel;
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = [];
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrBitBuffer
+  //---------------------------------------------------------------------
+
+  var qrBitBuffer = function() {
+
+    var _buffer = [];
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrNumber
+  //---------------------------------------------------------------------
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrAlphaNum
+  //---------------------------------------------------------------------
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qr8BitByte
+  //---------------------------------------------------------------------
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrKanji
+  //---------------------------------------------------------------------
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+
+    var stringToBytes = qrcode.stringToBytesFuncs['SJIS'];
+    if (!stringToBytes) {
+      throw 'sjis not supported.';
+    }
+    !function(c, code) {
+      // self test for sjis support.
+      var test = stringToBytes(c);
+      if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
+        throw 'sjis not supported.';
+      }
+    }('\u53cb', 0x9746);
+
+    var _bytes = stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  //=====================================================================
+  // GIF Support etc.
+  //
+
+  //---------------------------------------------------------------------
+  // byteArrayOutputStream
+  //---------------------------------------------------------------------
+
+  var byteArrayOutputStream = function() {
+
+    var _bytes = [];
+
+    var _this = {};
+
+    _this.writeByte = function(b) {
+      _bytes.push(b & 0xff);
+    };
+
+    _this.writeShort = function(i) {
+      _this.writeByte(i);
+      _this.writeByte(i >>> 8);
+    };
+
+    _this.writeBytes = function(b, off, len) {
+      off = off || 0;
+      len = len || b.length;
+      for (var i = 0; i < len; i += 1) {
+        _this.writeByte(b[i + off]);
+      }
+    };
+
+    _this.writeString = function(s) {
+      for (var i = 0; i < s.length; i += 1) {
+        _this.writeByte(s.charCodeAt(i) );
+      }
+    };
+
+    _this.toByteArray = function() {
+      return _bytes;
+    };
+
+    _this.toString = function() {
+      var s = '';
+      s += '[';
+      for (var i = 0; i < _bytes.length; i += 1) {
+        if (i > 0) {
+          s += ',';
+        }
+        s += _bytes[i];
+      }
+      s += ']';
+      return s;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64EncodeOutputStream
+  //---------------------------------------------------------------------
+
+  var base64EncodeOutputStream = function() {
+
+    var _buffer = 0;
+    var _buflen = 0;
+    var _length = 0;
+    var _base64 = '';
+
+    var _this = {};
+
+    var writeEncoded = function(b) {
+      _base64 += String.fromCharCode(encode(b & 0x3f) );
+    };
+
+    var encode = function(n) {
+      if (n < 0) {
+        // error.
+      } else if (n < 26) {
+        return 0x41 + n;
+      } else if (n < 52) {
+        return 0x61 + (n - 26);
+      } else if (n < 62) {
+        return 0x30 + (n - 52);
+      } else if (n == 62) {
+        return 0x2b;
+      } else if (n == 63) {
+        return 0x2f;
+      }
+      throw 'n:' + n;
+    };
+
+    _this.writeByte = function(n) {
+
+      _buffer = (_buffer << 8) | (n & 0xff);
+      _buflen += 8;
+      _length += 1;
+
+      while (_buflen >= 6) {
+        writeEncoded(_buffer >>> (_buflen - 6) );
+        _buflen -= 6;
+      }
+    };
+
+    _this.flush = function() {
+
+      if (_buflen > 0) {
+        writeEncoded(_buffer << (6 - _buflen) );
+        _buffer = 0;
+        _buflen = 0;
+      }
+
+      if (_length % 3 != 0) {
+        // padding
+        var padlen = 3 - _length % 3;
+        for (var i = 0; i < padlen; i += 1) {
+          _base64 += '=';
+        }
+      }
+    };
+
+    _this.toString = function() {
+      return _base64;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64DecodeInputStream
+  //---------------------------------------------------------------------
+
+  var base64DecodeInputStream = function(str) {
+
+    var _str = str;
+    var _pos = 0;
+    var _buffer = 0;
+    var _buflen = 0;
+
+    var _this = {};
+
+    _this.read = function() {
+
+      while (_buflen < 8) {
+
+        if (_pos >= _str.length) {
+          if (_buflen == 0) {
+            return -1;
+          }
+          throw 'unexpected end of file./' + _buflen;
+        }
+
+        var c = _str.charAt(_pos);
+        _pos += 1;
+
+        if (c == '=') {
+          _buflen = 0;
+          return -1;
+        } else if (c.match(/^\s$/) ) {
+          // ignore if whitespace.
+          continue;
+        }
+
+        _buffer = (_buffer << 6) | decode(c.charCodeAt(0) );
+        _buflen += 6;
+      }
+
+      var n = (_buffer >>> (_buflen - 8) ) & 0xff;
+      _buflen -= 8;
+      return n;
+    };
+
+    var decode = function(c) {
+      if (0x41 <= c && c <= 0x5a) {
+        return c - 0x41;
+      } else if (0x61 <= c && c <= 0x7a) {
+        return c - 0x61 + 26;
+      } else if (0x30 <= c && c <= 0x39) {
+        return c - 0x30 + 52;
+      } else if (c == 0x2b) {
+        return 62;
+      } else if (c == 0x2f) {
+        return 63;
+      } else {
+        throw 'c:' + c;
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // gifImage (B/W)
+  //---------------------------------------------------------------------
+
+  var gifImage = function(width, height) {
+
+    var _width = width;
+    var _height = height;
+    var _data = new Array(width * height);
+
+    var _this = {};
+
+    _this.setPixel = function(x, y, pixel) {
+      _data[y * _width + x] = pixel;
+    };
+
+    _this.write = function(out) {
+
+      //---------------------------------
+      // GIF Signature
+
+      out.writeString('GIF87a');
+
+      //---------------------------------
+      // Screen Descriptor
+
+      out.writeShort(_width);
+      out.writeShort(_height);
+
+      out.writeByte(0x80); // 2bit
+      out.writeByte(0);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Global Color Map
+
+      // black
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+
+      // white
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+
+      //---------------------------------
+      // Image Descriptor
+
+      out.writeString(',');
+      out.writeShort(0);
+      out.writeShort(0);
+      out.writeShort(_width);
+      out.writeShort(_height);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Local Color Map
+
+      //---------------------------------
+      // Raster Data
+
+      var lzwMinCodeSize = 2;
+      var raster = getLZWRaster(lzwMinCodeSize);
+
+      out.writeByte(lzwMinCodeSize);
+
+      var offset = 0;
+
+      while (raster.length - offset > 255) {
+        out.writeByte(255);
+        out.writeBytes(raster, offset, 255);
+        offset += 255;
+      }
+
+      out.writeByte(raster.length - offset);
+      out.writeBytes(raster, offset, raster.length - offset);
+      out.writeByte(0x00);
+
+      //---------------------------------
+      // GIF Terminator
+      out.writeString(';');
+    };
+
+    var bitOutputStream = function(out) {
+
+      var _out = out;
+      var _bitLength = 0;
+      var _bitBuffer = 0;
+
+      var _this = {};
+
+      _this.write = function(data, length) {
+
+        if ( (data >>> length) != 0) {
+          throw 'length over';
+        }
+
+        while (_bitLength + length >= 8) {
+          _out.writeByte(0xff & ( (data << _bitLength) | _bitBuffer) );
+          length -= (8 - _bitLength);
+          data >>>= (8 - _bitLength);
+          _bitBuffer = 0;
+          _bitLength = 0;
+        }
+
+        _bitBuffer = (data << _bitLength) | _bitBuffer;
+        _bitLength = _bitLength + length;
+      };
+
+      _this.flush = function() {
+        if (_bitLength > 0) {
+          _out.writeByte(_bitBuffer);
+        }
+      };
+
+      return _this;
+    };
+
+    var getLZWRaster = function(lzwMinCodeSize) {
+
+      var clearCode = 1 << lzwMinCodeSize;
+      var endCode = (1 << lzwMinCodeSize) + 1;
+      var bitLength = lzwMinCodeSize + 1;
+
+      // Setup LZWTable
+      var table = lzwTable();
+
+      for (var i = 0; i < clearCode; i += 1) {
+        table.add(String.fromCharCode(i) );
+      }
+      table.add(String.fromCharCode(clearCode) );
+      table.add(String.fromCharCode(endCode) );
+
+      var byteOut = byteArrayOutputStream();
+      var bitOut = bitOutputStream(byteOut);
+
+      // clear code
+      bitOut.write(clearCode, bitLength);
+
+      var dataIndex = 0;
+
+      var s = String.fromCharCode(_data[dataIndex]);
+      dataIndex += 1;
+
+      while (dataIndex < _data.length) {
+
+        var c = String.fromCharCode(_data[dataIndex]);
+        dataIndex += 1;
+
+        if (table.contains(s + c) ) {
+
+          s = s + c;
+
+        } else {
+
+          bitOut.write(table.indexOf(s), bitLength);
+
+          if (table.size() < 0xfff) {
+
+            if (table.size() == (1 << bitLength) ) {
+              bitLength += 1;
+            }
+
+            table.add(s + c);
+          }
+
+          s = c;
+        }
+      }
+
+      bitOut.write(table.indexOf(s), bitLength);
+
+      // end code
+      bitOut.write(endCode, bitLength);
+
+      bitOut.flush();
+
+      return byteOut.toByteArray();
+    };
+
+    var lzwTable = function() {
+
+      var _map = {};
+      var _size = 0;
+
+      var _this = {};
+
+      _this.add = function(key) {
+        if (_this.contains(key) ) {
+          throw 'dup key:' + key;
+        }
+        _map[key] = _size;
+        _size += 1;
+      };
+
+      _this.size = function() {
+        return _size;
+      };
+
+      _this.indexOf = function(key) {
+        return _map[key];
+      };
+
+      _this.contains = function(key) {
+        return typeof _map[key] != 'undefined';
+      };
+
+      return _this;
+    };
+
+    return _this;
+  };
+
+  var createDataURL = function(width, height, getPixel) {
+    var gif = gifImage(width, height);
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        gif.setPixel(x, y, getPixel(x, y) );
+      }
+    }
+
+    var b = byteArrayOutputStream();
+    gif.write(b);
+
+    var base64 = base64EncodeOutputStream();
+    var bytes = b.toByteArray();
+    for (var i = 0; i < bytes.length; i += 1) {
+      base64.writeByte(bytes[i]);
+    }
+    base64.flush();
+
+    return 'data:image/gif;base64,' + base64;
+  };
+
+  //---------------------------------------------------------------------
+  // returns qrcode function.
+
+  return qrcode;
+}();
+
+// multibyte support
+!function() {
+
+  qrcode.stringToBytesFuncs['UTF-8'] = function(s) {
+    // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
+    function toUTF8Array(str) {
+      var utf8 = [];
+      for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+          utf8.push(0xc0 | (charcode >> 6),
+              0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+          utf8.push(0xe0 | (charcode >> 12),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+          i++;
+          // UTF-16 encodes 0x10000-0x10FFFF by
+          // subtracting 0x10000 and splitting the
+          // 20 bits of 0x0-0xFFFFF into two halves
+          charcode = 0x10000 + (((charcode & 0x3ff)<<10)
+            | (str.charCodeAt(i) & 0x3ff));
+          utf8.push(0xf0 | (charcode >>18),
+              0x80 | ((charcode>>12) & 0x3f),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+      }
+      return utf8;
+    }
+    return toUTF8Array(s);
+  };
+
+}();
+
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+      define([], factory);
+  } else if (typeof exports === 'object') {
+      module.exports = factory();
+  }
+}(function () {
+    return qrcode;
+}));
+
+function qrMatrix(text){ const qr=qrcode(0,'L'); qr.addData(text); qr.make();
+  const n=qr.getModuleCount(); const m=[];
+  for(let r=0;r<n;r++){const row=[];for(let c=0;c<n;c++)row.push(qr.isDark(r,c)?1:0);m.push(row);} return m; }
+
+/* ═══════════════════ СТАРТ ═══════════════════ */
+/* Безопасный fallback: если ассет не загрузился — заменяем на герб/логотип, без «битых» картинок */
+document.addEventListener('error', function(e){
+  const t=e.target;
+  if(t && t.tagName==='IMG' && t.dataset.fb!=='1' && !/favicon/.test(t.src)){
+    t.dataset.fb='1';
+    t.src='assets/logo.png';
+    t.style.objectFit='contain';
+  }
+}, true);
+/* Оживление: реплики героя чередуются, монетки подпрыгивают при начислении */
+const HERO_LINES=[
+  'РАЙОН ЦВЕТОЧНЫЙ<br>ЖИВЁМ ЛУЧШЕ КАЖДЫЙ ДЕНЬ',
+  '21 — ЭТО МЫ САМИ<br>ДВОР ДЕЛАЮТ ЛЮДИ',
+  'ВЗАИМОПОМОЩЬ —<br>СИЛА ДВОРА ✦',
+  'ЧТО МОЖЕШЬ СДЕЛАТЬ<br>СЕГОДНЯ?'];
+let heroLine=0;
+setInterval(()=>{ const b=document.getElementById('heroBubble'); if(!b)return;
+  heroLine=(heroLine+1)%HERO_LINES.length; b.innerHTML=HERO_LINES[heroLine]; }, 9000);
+function bumpCoins(){ ['hpCoin','walletBig'].forEach(id=>{ const e=document.getElementById(id); if(e){ e.classList.remove('coin-bump'); void e.offsetWidth; e.classList.add('coin-bump'); }}); }
+
+/* ═══════════════════ СЕКРЕТНЫЕ НАГРАДЫ (ПАРОЛЬ ОТ АДМИНА) ═══════════════════ */
+/* ссылки в описании награды делаем кликабельными: строки вида http(s)://… */
+function linkify(txt){
+  const esc=String(txt).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/((https?:\/\/)[^\s]+)/gi, m=>`<a href="${m}" target="_blank" rel="noopener" style="color:var(--ink);font-weight:700;text-decoration:underline;word-break:break-all">${m}</a>`);
+}
+function openReward(){
+  S_.unlocked=S_.unlocked||[];
+  const rewards=S_.rewards||[];
+  const open=rewards.filter(r=>S_.unlocked.includes(r.id));
+  const closed=rewards.filter(r=>!S_.unlocked.includes(r.id));
+  const en=S_.lang==='en';
+  let html='';
+  if(open.length){
+    html+='<h3 style="font-size:8px;margin:4px 0 8px">'+(en?'UNLOCKED':'ОТКРЫТО')+'</h3>'+open.map(r=>`
+      <div style="border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--acc);padding:12px;margin-bottom:10px;background:var(--card)">
+        <div class="nm" style="font-size:9px;font-weight:700">🔓 ${r.n}</div>
+        <div class="tiny mt8" style="font-size:8px;line-height:2;white-space:pre-line">${linkify(r.d)}</div>
+      </div>`).join('');
+  }
+  if(closed.length){
+    html+='<h3 style="font-size:8px;margin:12px 0 8px">'+(en?'LOCKED — ENTER CODE':'ЗАКРЫТО — ВВЕДИ КОД')+'</h3>'+closed.map(r=>`
+      <div style="border:var(--bw) solid var(--ink);box-shadow:2px 2px 0 var(--ink);padding:12px;margin-bottom:10px;background:var(--paper)">
+        <div class="nm" style="font-size:9px;font-weight:700">🔒 ???</div>
+        <div class="tiny mt8" style="font-size:7.5px;color:var(--ink-3)">${en?'EXCLUSIVE FOR THE 21. ASK THE ADMIN FOR THE CODE.':'ЭКСКЛЮЗИВ ДЛЯ ДВАДЦАТЬ ПЕРВЫХ. УЗНАЙ КОД У АДМИНА.'}</div>
+        <div class="row mt8" style="gap:8px">
+          <input id="code_${r.id}" placeholder="${en?'CODE':'КОД'}" style="text-transform:uppercase;flex:1" oninput="this.value=this.value.toUpperCase()">
+          <button class="btn acc" style="padding:10px 14px" onclick="redeemReward('${r.id}')">${en?'OPEN':'ОТКРЫТЬ'}</button>
+        </div>
+      </div>`).join('');
+  }
+  if(!rewards.length){
+    html=`<div class="empty-note"><img class="pix" src="${A('ui_lock.png')}">${en?'NO SECRET REWARDS YET.<br>COMPLETE QUESTS AND ASK THE ADMIN FOR A CODE.':'ПОКА НЕТ СЕКРЕТНЫХ НАГРАД.<br>ВЫПОЛНЯЙ ЗАДАНИЯ И СПРОСИ КОД У АДМИНА.'}</div>`;
+  }
+  document.getElementById('rewardBody').innerHTML=html;
+  openModal('rewardModal');
+}
+function redeemReward(id){
+  const r=(S_.rewards||[]).find(x=>x.id===id); if(!r) return;
+  const inp=document.getElementById('code_'+id);
+  const code=(inp?inp.value:'').trim().toUpperCase();
+  if(!code){ toast(S_.lang==='en'?'ENTER THE CODE':'ВВЕДИ КОД'); return; }
+  if(code!==r.code.toUpperCase()){ toast(S_.lang==='en'?'WRONG CODE':'НЕВЕРНЫЙ КОД'); inp.value=''; return; }
+  S_.unlocked=S_.unlocked||[]; if(!S_.unlocked.includes(id)) S_.unlocked.push(id);
+  S_.xp+=r.xp; S_.karma+=r.karma;
+  save(); renderStats(); renderQuests();
+  toast((S_.lang==='en'?'UNLOCKED! +':'ОТКРЫТО! +')+r.xp+' XP');
+  openReward();
+}
+
+/* ═══════════════════ ЯЗЫК ИНТЕРФЕЙСА (RU/EN) ═══════════════════ */
+/* Переводятся только подписи интерфейса (точные совпадения).
+   Контент — квесты, посты, форум, статьи — НЕ переводится. */
+const I18N = {
+  'ГЛАВНАЯ':'HOME','КАРТА':'MAP','КВЕСТЫ':'QUESTS','ЭНЦИКЛОПЕДИЯ':'WIKI','ПРОФИЛЬ':'PROFILE',
+  'КВЕСТ':'QUEST','ВЫПОЛНЕНО':'DONE','ПОСТ':'POST','ПРОБЛЕМА':'ISSUE','ПРОЕКТ':'PROJECT','СТАТЬЯ':'ARTICLE','ФОТО':'PHOTO',
+  'КАРМА ◉':'KARMA ◉','КАРМА +':'KARMA +','КОШЕЛЁК ◆':'WALLET ◆','УРОВЕНЬ':'LEVEL','РЕПУТАЦИЯ ◉':'REPUTATION ◉',
+  'БЮДЖЕТ':'BUDGET','СУД':'COURT','ПОМОЧЬ':'HELP','ЧИТАТЬ':'READ',
+  'ВСЕ':'ALL','ДОСТУПНЫЕ':'AVAILABLE','МОИ':'MINE','ВЫПОЛНЕНЫ':'COMPLETED',
+  'ОТКРЫТЬ':'OPEN','В ИГРЕ':'IN PROGRESS','СУД СООБЩЕСТВА':'COMMUNITY COURT','ФОРУМ РАЙОНА':'DISTRICT FORUM',
+  'СТАТЬ ВОЛОНТЁРОМ 21':'BECOME A 21 VOLUNTEER','СКАЧАТЬ СТИКЕР':'DOWNLOAD STICKER',
+  'ПОСЛЕДНИЕ':'LATEST','МОИ ТЕМЫ':'MY TOPICS','СОЗДАТЬ ТЕМУ':'CREATE TOPIC','ЗАГОЛОВОК ТЕМЫ':'TOPIC TITLE','СУТЬ ВОПРОСА':'YOUR QUESTION',
+  'ЗАГОЛОВОК':'TITLE','ТЕКСТ':'TEXT','НАЗВАНИЕ':'NAME','ОПУБЛИКОВАТЬ В ЛЕНТУ':'PUBLISH TO FEED',
+  'КАК СТАТЬ ВОЛОНТЁРОМ 21':'HOW TO BECOME A 21 VOLUNTEER','СКАЧАТЬ QR-СТИКЕР':'DOWNLOAD QR STICKER',
+  'РЕСУРСЫ ГОРОДА':'CITY RESOURCES','БЮДЖЕТ РАЙОНА:':'DISTRICT BUDGET:','СОЗДАТЬ ПРОЕКТ':'CREATE PROJECT','ПЕРЕСЧИТАТЬ ПО ПРИОРИТЕТАМ':'RECALCULATE BY PRIORITY',
+  'ДЕНЬ РЕСУРСА':'RESOURCE DAY','НАГРАДА':'REWARD','ПОЛУЧИТЬ ПАЙЁК ✦':'GET RATION ✦','ПОНЯТНО ✦':'GOT IT ✦','ДАЛЕЕ ▶':'NEXT ▶',
+  'ЗНАНИЯ РАЙОНА':'DISTRICT KNOWLEDGE','БАЗА ЗНАНИЙ':'KNOWLEDGE BASE','ИДЕИ':'IDEAS','ВОДА':'WATER','ЭНЕРГИЯ':'ENERGY','ЕДА':'FOOD','ДОБАВИТЬ СТАТЬЮ':'ADD ARTICLE',
+  'ГАРДЕРОБ':'WARDROBE','ИНВЕНТАРЬ':'INVENTORY','ЗНАНИЯ':'KNOWLEDGE','ЗНАЧКИ':'BADGES','СУББОТНИК':'CLEANUP DAY',
+  'ЗНАЧКИ СКАУТА 21':'21 SCOUT BADGES','СТАТИСТИКА РАЙОНА':'DISTRICT STATS','ТЁМНАЯ / СВЕТЛАЯ':'DARK / LIGHT',
+  'ГОЛОВНОЙ УБОР':'HEADWEAR','АКСЕССУАР':'ACCESSORY',
+  'ЗА ЗАДАНИЕ':'FROM A QUEST','ЛЕНТА РАЙОНА':'DISTRICT FEED','ТОЧКИ РАЙОНА':'DISTRICT SPOTS','ТОЧЕК ПОКА НЕТ.':'NO SPOTS YET.',
+  'ТЕ, КТО РЯДОМ':'THOSE NEARBY','УДЕРЖИВАЙ':'HOLD','НАЗВАНИЕ ЗАДАНИЯ':'QUEST NAME','ОПИСАНИЕ ЗАДАНИЯ *':'QUEST DESCRIPTION *',
+  'ОПИСАНИЕ / ПИКТОГРАММА':'DESCRIPTION / PICTOGRAM','КАРТИНКА-ПИКТОГРАММА':'PICTOGRAM IMAGE','ПОДНЯТЬ ВОПРОС':'RAISE A QUESTION',
+  'СТАТИСТИКА':'STATS','АДМИН-ПАНЕЛЬ':'ADMIN PANEL','СТИКЕР 21':'STICKER 21','ВОЙТИ':'ENTER',
+  'ЗАДАНИЕ':'QUEST','НАПИСАТЬ 21MOVEMENT@GMAIL.COM':'EMAIL 21MOVEMENT@GMAIL.COM',
+  'Городской ассистент 21':'City assistant 21','ЯЗЫК: РУС':'LANG: ENG','ЯЗЫК: ENG':'LANG: RUS',
+  'СИЛ':'STR','ИНТ':'INT','ЗАЩ':'DEF','ЛОВ':'AGI','УДЧ':'LCK',
+  'ИНСТРУМЕНТЫ ГОТОВЫ ▶':'TOOLS READY ▶','СДЕЛАЛ ▶':'DONE ▶','БЕРУСЬ ЗА ДЕЛО ▶':'TAKE THE QUEST ▶',
+  'ЗАВЕРШИТЬ ЗАДАНИЕ ✓':'COMPLETE QUEST ✓','ЗАБРАТЬ НАГРАДУ':'CLAIM REWARD',
+  'СОБРАНО':'COLLECTED','АРТЕФАКТЫ — НАГРАДА ЗА ЗАДАНИЯ РАЙОНА.':'ARTIFACTS — REWARDS FOR DISTRICT QUESTS.',
+  'НЕ КУПИТЬ, МОЖНО ТОЛЬКО ЗАСЛУЖИТЬ.':'CAN’T BE BOUGHT — ONLY EARNED.',
+  'ВВЕСТИ КОД НАГРАДЫ':'ENTER REWARD CODE','СЕКРЕТНЫЙ КОД':'SECRET CODE','НАГРАДА':'REWARD',
+  'ОТКРЫТО':'UNLOCKED','ОТКРЫТЬ':'OPEN','КОД':'CODE','УДАЛИТЬ':'DELETE','СОЗДАТЬ НАГРАДУ':'CREATE REWARD',
+  'НАЗВАНИЕ ЭКСКЛЮЗИВНОГО АЙТЕМА':'EXCLUSIVE ITEM NAME','НАЗВАНИЕ НАГРАДЫ':'REWARD NAME',
+};
+function tRuToEn(s){ return (Object.prototype.hasOwnProperty.call(I18N,s)) ? I18N[s] : s; }
+function tr(s){ if(!s) return s; s=String(s); return (S_&&S_.lang==='en') ? tRuToEn(s) : s; }
+
+function applyLang(root){
+  root = root || document.body;
+  const en = S_ && S_.lang==='en';
+  /* длинные статичные блоки с готовым переводом */
+  root.querySelectorAll('[data-en]').forEach(el=>{
+    if(en){ if(el.dataset.ru===undefined) el.dataset.ru = el.innerHTML; el.innerHTML = el.dataset.en; }
+    else if(el.dataset.ru!==undefined){ el.innerHTML = el.dataset.ru; }
+  });
+  /* короткие подписи: точные текстовые узлы */
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+    acceptNode(n){ if(!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      if(n._ru===undefined){ const v=n.nodeValue; if(I18N[v.trim()]!==undefined || (v.trim() in I18N)) n._ru=v; }
+      return NodeFilter.FILTER_ACCEPT; }
+  });
+  const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(n=>{
+    if(en){
+      if(n._ru===undefined){ const key=n.nodeValue.trim(); if(key in I18N){ n._ru=n.nodeValue; } }
+      if(n._ru!==undefined){
+        const key=n._ru.trim(); if(key in I18N){
+          const lead=n._ru.match(/^\s*/)[0], trail=n._ru.match(/\s*$/)[0];
+          n.nodeValue=lead+I18N[key]+trail;
+        }
+      }
+    } else if(n._ru!==undefined){ n.nodeValue=n._ru; n._ru=undefined; }
+  });
+  /* плейсхолдеры инпутов */
+  root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(inp=>{
+    if(en){ if(inp._ruPh===undefined) inp._ruPh=inp.placeholder; const ph=inp._ruPh.trim(); if(ph in I18N) inp.placeholder=I18N[ph]; }
+    else if(inp._ruPh!==undefined){ inp.placeholder=inp._ruPh; inp._ruPh=undefined; }
+  });
+  /* кнопка-переключатель */
+  [['langBtn','🌐 RU','🌐 EN'],['langBtnLand','🌐 RU','🌐 EN']].forEach(([id,ru,enx])=>{
+    const lb=document.getElementById(id); if(lb) lb.textContent = en ? enx : ru;
+  });
+}
+let _langRaf=null, _langApplying=false;
+function scheduleApplyLang(){
+  if(_langApplying || !S_ || S_.lang!=='en') return;
+  if(_langRaf) cancelAnimationFrame(_langRaf);
+  _langRaf=requestAnimationFrame(()=>{ _langRaf=null; _langApplying=true; try{ applyLang(document.body); }catch(e){} _langApplying=false; });
+}
+function toggleLang(){
+  S_.lang = (S_.lang==='en') ? 'ru' : 'en';
+  save();
+  /* сброс кэша оригиналов при возврате на русский не нужен — applyLang сам восстанавливает */
+  applyLang(document.body);
+  if(S_.lang==='en'){ const to=tr('ЯЗЫК ИНТЕРФЕЙСА: ENGLISH'); toast('INTERFACE LANGUAGE: EN'); }
+  else toast('ЯЗЫК ИНТЕРФЕЙСА: РУССКИЙ');
+}
+/* динамически дорисованный контент переводим на лету */
+(function(){
+  if(!window.MutationObserver) return;
+  const mo=new MutationObserver(()=>scheduleApplyLang());
+  mo.observe(document.body,{childList:true,subtree:true});
+})();
+
+load(); renderStats(); renderFeed(); renderQuests(); renderPets(); renderAgents();
+applyLang(document.body);
+askPos(()=>{ renderMapPoints(); }, ()=>{});
+/* Telegram Mini App: регистрация через Telegram сразу, личность из tg.initDataUnsafe */
+(function(){
+  const tg=(window.Telegram&&window.Telegram.WebApp)||null;
+  if(tg){ try{
+    tg.ready();
+    try{ tg.expand(); }catch(e){}
+    if(tg.initDataUnsafe && tg.initDataUnsafe.user){
+      const u=tg.initDataUnsafe.user;
+      S_.tgName=(u.username?('@'+u.username):((u.first_name||'ВОЛОНТЁР')+' '+(u.last_name||''))).trim().toUpperCase();
+      save();
+    }
+  }catch(e){} }
+})();
+admIconSetup('apIcons'); admIconSetup('apPostIcons');
+// Яндекс карты
+var ymapLoad=function(){ var s=document.createElement('script');
+  s.src='https://api-maps.yandex.ru/2.1/?apikey=519c40d1-f214-4b8d-8823-6a8b6e3039e7&lang=ru_RU';
+  s.onerror=()=>document.getElementById('mapFallback').style.display='block';
+  document.head.appendChild(s); };
+if(location.protocol!=='file:') ymapLoad(); else document.getElementById('mapFallback').style.display='block';
+// офлайн-кеш PWA (best-effort)
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
