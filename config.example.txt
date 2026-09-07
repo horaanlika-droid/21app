@@ -1,0 +1,9 @@
+/* 21 — необязательная конфигурация. Скопируйте В config.js (он в .gitignore).
+   Это .txt намеренно: некоторые node-хостинги берут "первый .js" точкой входа. 
+   Нужен, только если приложение и бот-хост на РАЗНЫХ доменах
+   (например, GitHub Pages + отдельный хост бота).
+   На одном origin (node http-wrapper.js) файл не нужен: /api/bot есть сам. */
+
+/* База релея Bot API: POST <base>/<метод>. На бот-хосте токен берётся из env:
+   TELEGRAM_BOT_TOKEN=123:ABC node http-wrapper.js */
+window.OS21_BOT_API = 'https://your-bot.host/api/bot';
