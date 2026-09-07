@@ -385,6 +385,12 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   font-size:14px;font-weight:700;color:var(--blue);box-shadow:0 1px 2px rgba(16,24,40,.05);
 }
 .act3:active{background:#f2f4f7}
+.adminbar{width:100%;margin-top:9px;border:none;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;background:linear-gradient(135deg,#ff9500,#ff5e3a);color:#fff;box-shadow:0 1px 3px rgba(16,24,40,.12)}
+.adminbar:active{filter:brightness(.95)}
+.adminbar .ab-t{flex:1;text-align:left}
+.adminbar b{display:block;font-size:14.5px;font-weight:800}
+.adminbar .s{display:block;font-size:12px;opacity:.92;margin-top:2px}
+.adminbar .arr{font-size:18px;opacity:.9}
 .act3 svg{width:22px;height:22px}
 .lastdist{background:var(--blue-l);border-radius:14px;padding:13px 15px;margin-top:11px}
 .lastdist .ldt{font-size:12px;color:var(--gray);font-weight:700;margin-bottom:7px}
@@ -668,6 +674,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <button class="act3" id="btnShare"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4v10M7 10l4 4 4-4M4 18h14"/></svg>Распределить</button>
         <button class="act3" id="btnJournal"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h14M4 11h14M4 16h9"/></svg>Журнал</button>
       </div>
+      <button class="adminbar" id="btnAdmins"><span class="ab-t"><b>🧡 Поддержать админов 21</b><span class="s">Stars через Tribute · держим район живым вместе</span></span><span class="arr">›</span></button>
       <div class="paybox" id="payWallet"><div class="aminor">Кошелёк выплат GRAM · загрузка…</div></div>
       <div class="sec-label">ПРОЕКТЫ</div>
       <div id="projList"></div>
@@ -1970,6 +1977,9 @@ function renderFund() {
   });
 }
 $('#btnDeposit').addEventListener('click', () => {
+  tonDepositSheet(OWNER_WALLET, { title: 'Пополнить фонд района', logTag: 'пополнение фонда', creditMine: true });
+});
+$('#btnAdmins').addEventListener('click', () => {
   const tw0 = window.__tg;
   const url = 'https://t.me/tribute/app?startapp=dLSm';
   if (tw0 && tw0.openTelegramLink) { tw0.openTelegramLink(url); return; }
@@ -2414,6 +2424,7 @@ function tonLink(to, grams, note) {
   return 'ton://transfer/' + encodeURIComponent(to) + '?amount=' + grams + '&text=' + encodeURIComponent(note || '21 · ордер');
 }
 /* ---------------- TON CONNECT UI ---------------- */
+const OWNER_WALLET = 'UQC1xYc4aPgMaHjER3xZPRKz4LfYgDyNSBSxykZmB2YbsWLW'; // кошелёк района · кнопка «Внести»
 let tonUI = null, tonUIGone = false, tonWalletAddr = null;
 function shortAddr(a) { return a && a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : (a || ''); }
 function ensureTonUI() {
@@ -2455,17 +2466,27 @@ $('#tonConnectBtn').addEventListener('click', async () => {
     }
   } catch (e) { toast('Подключение отменено', ''); }
 });
-async function tonDepositSheet(addr) {
-  if (!addr) { toast('Адрес фонда не настроен', ''); return; }
+async function tonDepositSheet(addr, cfg) {
+  cfg = cfg || {};
+  const title = cfg.title || 'TON-депозит в фонд';
+  if (!addr) { toast('Адрес не настроен', ''); return; }
   const ui = ensureTonUI();
-  if (!ui) { toast('TON Connect недоступен · отправь GRAM вручную', ''); return; }
-  if (!tonWalletAddr) {
-    try { await ui.connect(); } catch (e) {}
-    if (!tonWalletAddr) { toast('Нужен подключённый кошелёк', ''); return; }
+  if (!ui) {
+    const body0 = el('div');
+    body0.appendChild(el('div', 'note', 'TON Connect недоступен · отправь TON на кошелёк района вручную — зачтём после подтверждения.'));
+    const l0 = el('div', 'pw-line');
+    l0.appendChild(el('code', null, addr));
+    const cp0 = el('button', 'pb no', 'копировать');
+    cp0.style.cssText = 'border:none;border-radius:10px;padding:7px 10px;font-weight:700;cursor:pointer;background:#eef0f3';
+    cp0.addEventListener('click', () => { try { navigator.clipboard.writeText(addr); toast('Скопировано'); } catch (e) {} });
+    l0.appendChild(cp0); body0.appendChild(l0);
+    openSheet('assets/ic_wallet.png', title, body0); return;
   }
+  if (!tonWalletAddr) { try { await ui.connect(); } catch (e) {} }
+  if (!tonWalletAddr) { toast('Нужен подключённый кошелёк', ''); return; }
   let ton = 1;
   const body = el('div');
-  body.appendChild(el('div', 'note', 'Перевод уходит на кошелёк выплат района напрямую из твоего TON-кошелька. В приложении зачтём ≈-сумму в ₽ сразу, сеть подтвердит следом.'));
+  body.appendChild(el('div', 'note', cfg.note || 'Перевод уходит с твоего TON-кошелька напрямую. В приложении зачтём ≈-сумму в ₽ сразу, сеть подтвердит следом.'));
   const row = el('div', 'chips');
   const mk = (v, on) => {
     const c = el('button', 'chip' + (on ? ' green' : ''), v + ' TON');
@@ -2474,21 +2495,22 @@ async function tonDepositSheet(addr) {
   };
   [0.5, 1, 2.5, 5].forEach(v => mk(v, v === 1));
   body.appendChild(row);
-  body.appendChild(el('div', 'aminor', 'адрес фонда: ' + shortAddr(addr)));
+  body.appendChild(el('div', 'aminor', 'адрес: ' + shortAddr(addr)));
   const b = el('button', 'bigbtn', 'Отправить через кошелёк');
   b.addEventListener('click', async () => {
     try {
       await ui.sendTransaction({ validUntil: Date.now() + 5 * 60000, messages: [{ address: addr, amount: String(Math.round(ton * 1e9)) }] });
       const rub = Math.round(ton * (window.__tonRub || 475));
       st.fund.bank += rub;
-      st.log.unshift({ s: '💎 TON-депозит ' + ton + ' TON ≈ ' + fmtR(rub) + ' в фонд · ждёт подтверждения сети', ts: Date.now() });
+      if (cfg.creditMine) st.fund.myContrib = (st.fund.myContrib || 0) + rub;
+      st.log.unshift({ s: '💎 ' + ton + ' TON ≈ ' + fmtR(rub) + ' · ' + (cfg.logTag || 'депозит в фонд') + ' · ждёт подтверждения сети', ts: Date.now() });
       save(); refreshAll(); closeSheet();
       toast('💎 Отправлено · ' + ton + ' TON', 'assets/ic_check.png');
-      botNotify('💎 TON-ДЕПОЗИТ: ' + (st.user.nick || st.user.name) + ' отправил ' + ton + ' TON в фонд (tx в сети)');
+      botNotify('💎 TON-ДЕПОЗИТ: ' + (st.user.nick || st.user.name) + ' → ' + (cfg.logTag || 'фонд') + ' · ' + ton + ' TON (tx в сети)');
     } catch (e) { toast('Перевод отменён', ''); }
   });
   body.appendChild(b);
-  openSheet('assets/ic_wallet.png', 'TON-депозит в фонд', body);
+  openSheet('assets/ic_wallet.png', title, body);
 }
 function renderPayouts() {
   const lb = $('#payLabel'), box = $('#payList');
@@ -2606,7 +2628,7 @@ function renderFundWallet() {
     l3.appendChild(el('span', 'aminor', 'или одним переводом из TON-кошелька'));
     const td = el('button', 'pb link', '👛 TON-депозит');
     td.style.cssText = 'border:none;border-radius:10px;padding:7px 11px;font-weight:800;cursor:pointer;background:var(--blue);color:#fff';
-    td.addEventListener('click', () => tonDepositSheet(j.address));
+    td.addEventListener('click', () => tonDepositSheet(j.address, { title: 'TON-депозит · кошелёк выплат', logTag: 'кошелёк выплат', note: 'Пополняет общий кошелёк выплат — из него модераторы платят за закрытые работы.' }));
     l3.appendChild(td);
     b.appendChild(l3);
   }).catch(() => {
