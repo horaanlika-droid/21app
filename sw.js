@@ -1,4 +1,4 @@
-const CACHE='21-v30';
+const CACHE='21-v31';
 const CORE=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})));self.skipWaiting();});
 self.addEventListener('activate',e=>{

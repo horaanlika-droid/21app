@@ -1098,6 +1098,67 @@ def badge(glyph_rows):
                 px[x + 3, y + 3] = (255, 255, 255, 255)
     return im
 
+
+def body0():  # tan box
+    im = blank(16, 16)
+    rect(im, 2, 1, 13, 15, (0, 0, 0))
+    rect(im, 3, 2, 12, 14, A)
+    rect(im, 3, 2, 12, 3, (230, 230, 230))
+    rect(im, 7, 3, 8, 4, (255, 255, 255))
+    rect(im, 3, 12, 12, 14, D)
+    return im
+
+def body1():  # gray vest
+    im = blank(16, 16)
+    rect(im, 2, 1, 13, 15, (0, 0, 0))
+    rect(im, 3, 2, 12, 14, (153, 153, 153))
+    rect(im, 3, 2, 12, 3, (230, 230, 230))
+    rect(im, 7, 2, 7, 14, (51, 51, 51))
+    rect(im, 3, 12, 12, 14, (102, 102, 102))
+    return im
+
+def body2():  # dark hoodie
+    im = blank(16, 16)
+    rect(im, 2, 1, 13, 15, (0, 0, 0))
+    rect(im, 3, 2, 12, 14, (102, 102, 102))
+    for x in range(3, 13):
+        y = 2 + abs(x - 7)
+        _px(im, x, y, (51, 51, 51))
+    rect(im, 5, 2, 10, 3, (51, 51, 51))
+    _px(im, 6, 5, A); _px(im, 9, 5, A)
+    rect(im, 3, 12, 12, 14, (51, 51, 51))
+    return im
+
+def _px(im, x, y, c):
+    if 0 <= x < im.width and 0 <= y < im.height:
+        im.load()[x, y] = c + (255,)
+
+def ic_work():  # hammer
+    im = blank(16, 16)
+    rect(im, 3, 3, 10, 6, (51, 51, 51))
+    rect(im, 3, 3, 10, 3, (0, 0, 0))
+    rect(im, 9, 6, 11, 13, (102, 102, 102))
+    _px(im, 10, 7, (0, 0, 0)); _px(im, 10, 10, (0, 0, 0)); _px(im, 11, 12, (0, 0, 0))
+    return im
+
+def ic_journal():  # ledger
+    im = blank(16, 16)
+    rect(im, 3, 2, 12, 13, (0, 0, 0))
+    rect(im, 4, 3, 11, 12, (230, 230, 230))
+    rect(im, 6, 3, 6, 12, (102, 102, 102))
+    rect(im, 8, 5, 10, 5, (51, 51, 51))
+    rect(im, 8, 8, 10, 8, (51, 51, 51))
+    rect(im, 8, 11, 9, 11, (51, 51, 51))
+    return im
+
+def ic_lvl():  # trophy
+    im = blank(16, 16)
+    rect(im, 5, 2, 10, 5, A)
+    rect(im, 7, 7, 8, 9, (51, 51, 51))
+    rect(im, 5, 10, 10, 12, A)
+    rect(im, 4, 13, 11, 14, (0, 0, 0))
+    return im
+
 def bd_first():
     return badge([
 "......",
@@ -1326,6 +1387,9 @@ if __name__ == '__main__':
     save('ic_save.png', ic_save())
     save('ic_ai.png', ic_ai())
     save('ic_edit.png', ic_edit())
+    save('ic_work.png', ic_work())
+    save('ic_journal.png', ic_journal())
+    save('ic_lvl.png', ic_lvl())
     print('quest types / encyclopedia:')
     save('qt_fix.png', qt_fix())
     save('qt_help.png', qt_help())
@@ -1364,13 +1428,17 @@ if __name__ == '__main__':
     save('dd_robot.png', dd_robot())
     print('badges:')
     save('bd_first.png', bd_first())
-    save('bd_ten.png', bd_ten())
-    save('bd_voter.png', bd_voter())
+    save('bd_five.png', bd_ten())
+    save('bd_karma.png', bd_voter())
     save('bd_donor.png', bd_donor())
-    save('bd_post.png', bd_post())
-    save('bd_admin.png', bd_admin())
-    save('bd_style.png', bd_style())
-    save('bd_level5.png', bd_level5())
+    save('bd_editor.png', bd_post())
+    save('bd_judge.png', bd_admin())
+    save('bd_master.png', bd_style())
+    save('bd_lvl3.png', bd_level5())
+    print('bodies:')
+    save('body0.png', body0())
+    save('body1.png', body1())
+    save('body2.png', body2())
     print('gif:')
     gif_save('loading.gif', loading_gif(), 100)
     gif_save('working.gif', working_gif(), 130)
@@ -1380,7 +1448,7 @@ if __name__ == '__main__':
     names = ['ic_map', 'ic_quest', 'ic_user', 'ic_book', 'ic_wallet', 'ic_court', 'ic_admin', 'ic_char', 'ic_qr', 'ic_feed',
              'ic_pc', 'ic_power', 'ic_coin', 'ic_star', 'ic_xp', 'ic_heart', 'ic_check', 'ic_trash', 'ic_plus', 'ic_cam',
              'ic_dl', 'ic_wifi', 'ic_sound', 'ic_vote', 'ic_dice', 'ic_save', 'ic_ai', 'ic_edit', 'qt_fix', 'qt_help',
-             'qt_swap', 'qt_class', 'en_water', 'en_energy', 'en_food', 'en_repair', 'bd_first', 'bd_voter', 'bd_donor', 'bd_level5']
+             'qt_swap', 'qt_class', 'en_water', 'en_energy', 'en_food', 'en_repair', 'bd_first', 'bd_karma', 'bd_donor', 'bd_lvl3']
     def _gen(nm):
         return {'ic_map': ic_map, 'ic_quest': ic_quest, 'ic_user': ic_user, 'ic_book': ic_book, 'ic_wallet': ic_wallet,
                 'ic_court': ic_court, 'ic_admin': ic_admin, 'ic_char': ic_char, 'ic_qr': ic_qr, 'ic_feed': ic_feed,
@@ -1389,8 +1457,8 @@ if __name__ == '__main__':
                 'ic_dl': ic_dl, 'ic_wifi': ic_wifi, 'ic_sound': ic_sound, 'ic_vote': ic_vote, 'ic_dice': ic_dice,
                 'ic_save': ic_save, 'ic_ai': ic_ai, 'ic_edit': ic_edit, 'qt_fix': qt_fix, 'qt_help': qt_help,
                 'qt_swap': qt_swap, 'qt_class': qt_class, 'en_water': en_water, 'en_energy': en_energy,
-                'en_food': en_food, 'en_repair': qt_fix, 'bd_first': bd_first, 'bd_voter': bd_voter,
-                'bd_donor': bd_donor, 'bd_level5': bd_level5}[nm]()
+                'en_food': en_food, 'en_repair': qt_fix, 'bd_first': bd_first, 'bd_karma': bd_voter,
+                'bd_donor': bd_donor, 'bd_lvl3': bd_level5}[nm]()
     IMGS = {nm: _gen(nm) for nm in names}
     save('atlas.png', atlas(names))
     print('done.')
