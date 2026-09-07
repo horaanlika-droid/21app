@@ -1,0 +1,34 @@
+{
+ "logo.png": {
+  "src": "IMG_1841_r1c1.png",
+  "size": 256
+ },
+ "ic_quest.png": {
+  "src": "IMG_1830_r2c1.png",
+  "size": 96
+ },
+ "ic_work.png": {
+  "src": "IMG_1830_r2c4.png",
+  "size": 96
+ },
+ "ic_check.png": {
+  "src": "IMG_1830_r1c3.png",
+  "size": 96
+ },
+ "qt_fix.png": {
+  "src": "IMG_1830_r2c1.png",
+  "size": 128
+ },
+ "qt_help.png": {
+  "src": "IMG_1833_r1c4.png",
+  "size": 128
+ },
+ "qt_swap.png": {
+  "src": "IMG_1833_r1c2.png",
+  "size": 128
+ },
+ "qt_class.png": {
+  "src": "IMG_1830_r3c3.png",
+  "size": 128
+ }
+}
