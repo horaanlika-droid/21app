@@ -8,6 +8,45 @@
 <link rel="icon" href="assets/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="./config.js" onerror="this.remove()"></script>
+<script>
+/* ==== Telegram WebApp: официальная интеграция (expand, тема, хаптика) ==== */
+(function () {
+  var t = window.Telegram && window.Telegram.WebApp;
+  window.__tg = t || null;
+  window.tgHaptic = function (kind) {
+    try { if (!t) return; if (kind === 'selection') t.HapticFeedback.selectionChanged(); else t.HapticFeedback.impactOccurred(kind); } catch (e) {}
+  };
+  window.tgNotify = function (kind) {
+    try { t && t.HapticFeedback.notificationOccurred(kind); } catch (e) {}
+  };
+  if (!t) return;
+  var root = document.documentElement;
+  function applyTheme() {
+    try {
+      var p = t.themeParams || {};
+      var dark = t.colorScheme === 'dark';
+      root.dataset.theme = dark ? 'dark' : 'light';
+      function set(k, v) { if (v) root.style.setProperty(k, v); }
+      set('--bg', p.bg_color); set('--body', p.bg_color);
+      set('--ink', p.text_color); set('--ink2', p.text_color);
+      set('--gray', p.hint_color);
+      if (dark) set('--card', p.secondary_bg_color);
+      set('--blue', p.button_color); set('--btn-ink', p.button_text_color);
+      var hex = p.bg_color || (dark ? '#0f0f10' : '#ffffff');
+      var m = document.querySelector('meta[name=theme-color]');
+      if (m) m.setAttribute('content', hex);
+      try { t.setHeaderColor(hex); t.setBackgroundColor(hex); } catch (e) {}
+    } catch (e) {}
+  }
+  applyTheme();
+  try { t.ready(); } catch (e) {}
+  function expand() { try { t.expand(); t.disableVerticalSwipes && t.disableVerticalSwipes(); } catch (e) {} }
+  expand();
+  try { t.onEventEvent('themeChanged', function () { applyTheme(); expand(); }); } catch (e) {}
+  try { t.onEventEvent('viewportChanged', expand); } catch (e) {}
+})();
+</script>
 <style>
 /* ============================================================
    21 — районная сеть · Telegram Mini App
@@ -21,36 +60,66 @@
   --acc:#d4a373;
   --bg:#f4f5f7; --card:#fff;
   --ink:#111; --ink2:#3a3c40; --gray:#8e8e93; --line:#e8eaed;
+  --chip:#f2f3f5; --chip2:#e3e5e8; --body:#e9ebee;
+  --t-orange:#b45309; --t-green:#1c7c3d; --btn-ink:#fff;
+  --red-l:#fdecec; --violet:#8b5cf6; --violet-l:#e6dcff;
+  --tabs-bg:rgba(255,255,255,.96);
   --r:16px;
   --safe-b:env(safe-area-inset-bottom,0px);
+}
+/* тёмная тема: Telegram (data-theme) или система для standalone-PWA */
+html[data-theme=dark]{
+  --blue:#0a84ff; --blue-l:#16283c;
+  --orange:#ff9f0a; --orange-l:#2b2015;
+  --green:#30d158; --green-l:#14291c;
+  --red:#ff453a; --red-l:#2b1614; --violet:#a78bfa; --violet-l:#211b33;
+  --acc:#d4a373;
+  --bg:#0f0f10; --card:#1c1d1f;
+  --ink:#f1f1f2; --ink2:#c7c9cc; --gray:#8e9299; --line:#2a2c2f;
+  --chip:#252628; --chip2:#2e3033; --body:#0a0a0b;
+  --t-orange:#ff9f0a; --t-green:#30d158; --btn-ink:#fff;
+  --tabs-bg:rgba(20,21,23,.92);
+}
+@media (prefers-color-scheme:dark){
+  html:not([data-theme]){
+    --blue:#0a84ff; --blue-l:#16283c;
+    --orange:#ff9f0a; --orange-l:#2b2015;
+    --green:#30d158; --green-l:#14291c;
+    --red:#ff453a; --red-l:#2b1614; --violet:#a78bfa; --violet-l:#211b33;
+    --bg:#0f0f10; --card:#1c1d1f;
+    --ink:#f1f1f2; --ink2:#c7c9cc; --gray:#8e9299; --line:#2a2c2f;
+    --chip:#252628; --chip2:#2e3033; --body:#0a0a0b;
+    --t-orange:#ff9f0a; --t-green:#30d158;
+    --tabs-bg:rgba(20,21,23,.92);
+  }
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
-  color:var(--ink); background:#e9ebee; font-size:15px;
+  color:var(--ink); background:var(--body); font-size:15px;
   user-select:none;-webkit-user-select:none;
 }
-img,canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+canvas,.post .pi,.iphoto img{image-rendering:pixelated;image-rendering:crisp-edges}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 ::-webkit-scrollbar{display:none}
 
 #boot,#gate,#onb,#app{
-  position:relative;max-width:480px;margin:0 auto;min-height:100vh;
+  position:relative;max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;
   background:var(--bg);
 }
-#app{display:flex;flex-direction:column;height:100vh;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}
-#boot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#fff}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:100vh;min-height:100dvh;box-shadow:0 0 40px rgba(0,0,0,.08)}
+#boot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:var(--card)}
 #boot img{width:96px}
 #boot .b21{font-size:22px;font-weight:800;letter-spacing:2px}
 #boot .b21 em{font-style:normal;color:var(--acc)}
 #bootBar{display:flex;gap:3px}
-#bootBar i{width:12px;height:14px;background:#ececec;border-radius:2px}
+#bootBar i{width:12px;height:14px;background:var(--line);border-radius:2px}
 #bootBar i.on{background:var(--acc)}
 
 /* ---------- gate ---------- */
-#gate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px 28px;text-align:center;background:#fff}
+#gate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px 28px;text-align:center;background:var(--card)}
 #gate img{width:110px}
 #gate h1{font-size:24px;font-weight:800}
 #gate p{color:var(--gray);line-height:1.55;font-size:15px}
@@ -59,7 +128,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 #gate .gnote{font-size:12.5px;color:#b0b3b8;line-height:1.5}
 
 /* ---------- onboarding ---------- */
-#onb{display:flex;flex-direction:column;background:#fff}
+#onb{display:flex;flex-direction:column;background:var(--card)}
 .onb-scroll{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:36px 30px;text-align:center}
 .onb-scroll img,.onb-scroll canvas{width:120px;height:auto}
 .onb-chip{display:inline-flex;align-items:center;gap:8px;font-size:15px;color:var(--ink2)}
@@ -79,32 +148,58 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 
 /* ---------- кнопки ---------- */
 .btn{
-  width:100%;background:var(--blue);color:#fff;font-size:17px;font-weight:600;
+  width:100%;background:var(--blue);color:var(--btn-ink);font-size:17px;font-weight:600;
   padding:15px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;
 }
 .btn:active{opacity:.85}
-.btn.ghost{background:#eef0f3;color:var(--blue)}
+.btn.ghost{background:var(--chip);color:var(--blue)}
 .btn.red{background:var(--red)}
 .btn.sm{width:auto;font-size:14px;padding:11px 16px;border-radius:11px}
 .btn:disabled{opacity:.4}
 
 /* ---------- header ---------- */
 #hdr{
-  background:#fff;padding:12px 16px 10px;border-bottom:1px solid var(--line);
+  background:var(--card);padding:12px 16px 10px;border-bottom:1px solid var(--line);
   display:flex;align-items:center;gap:11px;
   padding-top:calc(12px + env(safe-area-inset-top,0px));
   flex:0 0 auto;
 }
-#hdr .hav{width:42px;height:42px;border-radius:12px;background:#f2f3f5;flex:0 0 42px;display:flex;align-items:center;justify-content:center}
+#hdr .hav{width:42px;height:42px;border-radius:12px;background:var(--chip);flex:0 0 42px;display:flex;align-items:center;justify-content:center}
 #hdrAvatar{width:19px;height:38px}
+#hdr .hlogo{width:42px;height:42px;border-radius:12px;flex:0 0 42px;background:#fff;object-fit:cover}
+#btnHdrQR img{width:26px;height:26px;border-radius:8px;display:block}
+.strike{font-size:27px;font-weight:900;letter-spacing:.06em;text-align:center;margin:18px 0 4px;color:var(--ink,#111)}
+.strike s{color:#b0b3b8;margin-right:10px}
+.catdots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px}
+.catdots .cd{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer}
+.catdots .cd img{width:22px;height:22px}
+.fmark::after{content:'';position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);width:9px;height:9px;border-radius:99px;background:#007aff;box-shadow:0 0 0 2px #fff}
+.fmark.s-doing::after{background:#ff9500}
+.fmark.s-done::after{background:#34c759}
+.tab img.tablogo{width:22px;height:22px;border-radius:7px}
+.payrow{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.payrow:last-child{border-bottom:none}
+.payrow .pr-m{flex:1;min-width:0}
+.payrow .pr-t{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payrow .pr-s{color:var(--gray);font-size:12px;margin-top:2px;word-break:break-all}
+.payrow .pr-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.payrow .pr-sum{font-weight:900;font-size:14.5px;white-space:nowrap}
+.payrow .pb{border:none;border-radius:10px;padding:8px 11px;font-size:12.5px;font-weight:800;cursor:pointer}
+.payrow .pb.ok{background:var(--green);color:#fff}
+.payrow .pb.link{background:var(--blue);color:#fff}
+.payrow .pb.no{background:#eef0f3;color:var(--gray)}
+.paybox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:10px 0}
+.paybox .pw-line{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.paybox code{font-size:12px;background:#eef0f3;padding:3px 8px;border-radius:8px;word-break:break-all}
+.meava{width:96px;height:96px;border-radius:50%;object-fit:cover;background:var(--chip);display:block;margin:2px auto 10px;border:2px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.12)}
 #hdr .hinfo{flex:1;min-width:0}
 #hdr .hname{font-size:16.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #hdr .hlvl{font-size:12.5px;color:var(--gray);margin-top:1px}
-#hdr .hbar{height:4px;border-radius:99px;background:#e7e9ec;margin-top:5px;overflow:hidden}
+#hdr .hbar{height:4px;border-radius:99px;background:var(--line);margin-top:5px;overflow:hidden}
 #hdr .hbar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .4s}
 .hchips{display:flex;gap:6px}
 .hchip{
-  display:flex;align-items:center;gap:5px;background:#f2f3f5;border-radius:99px;
+  display:flex;align-items:center;gap:5px;background:var(--chip);border-radius:99px;
   padding:6px 10px;font-size:14px;font-weight:600;
 }
 .hchip img{width:16px;height:16px}
@@ -121,20 +216,20 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .pg-head{display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px}
 .pg-head h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
 .chip{
-  display:inline-flex;align-items:center;gap:5px;background:#eef0f3;color:var(--ink2);
+  display:inline-flex;align-items:center;gap:5px;background:var(--chip);color:var(--ink2);
   font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:99px;white-space:nowrap;
 }
 .chip.blue{background:var(--blue-l);color:var(--blue)}
-.chip.orange{background:var(--orange-l);color:#b45309}
-.chip.green{background:var(--green-l);color:#1c7c3d}
-.chip.gray2{background:#e3e5e8;color:var(--gray)}
+.chip.orange{background:var(--orange-l);color:var(--t-orange)}
+.chip.green{background:var(--green-l);color:var(--t-green)}
+.chip.gray2{background:var(--chip2);color:var(--gray)}
 .sec-label{font-size:12px;font-weight:700;color:var(--gray);letter-spacing:.6px;margin:20px 2px 10px}
 .card{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
-.note{background:#eef0f3;border-radius:12px;padding:11px 13px;font-size:13.5px;color:var(--ink2);line-height:1.5;margin-bottom:12px}
+.note{background:var(--chip);border-radius:12px;padding:11px 13px;font-size:13.5px;color:var(--ink2);line-height:1.5;margin-bottom:12px}
 
 /* ---------- карты ---------- */
 .mapbox{
-  position:relative;height:340px;border-radius:var(--r);overflow:hidden;background:#e6e8eb;
+  position:relative;height:340px;border-radius:var(--r);overflow:hidden;background:var(--chip2);
   box-shadow:0 1px 2px rgba(16,24,40,.05);
 }
 #ymapbox{position:absolute;inset:0}
@@ -143,18 +238,18 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .fmark img{width:26px;height:30px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
 .map-ctl{position:absolute;right:10px;top:10px;z-index:5;display:flex;flex-direction:column;gap:7px}
 .map-ctl button{
-  width:36px;height:36px;background:#fff;border-radius:10px;font-size:18px;font-weight:600;color:var(--ink);
+  width:36px;height:36px;background:var(--card);border-radius:10px;font-size:18px;font-weight:600;color:var(--ink);
   box-shadow:0 2px 6px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;
 }
 .map-ctl button:active{transform:scale(.94)}
 .legend{
-  position:absolute;right:10px;bottom:12px;z-index:5;background:#fff;border-radius:10px;
+  position:absolute;right:10px;bottom:12px;z-index:5;background:var(--card);border-radius:10px;
   box-shadow:0 2px 6px rgba(0,0,0,.15);padding:8px 11px;font-size:12.5px;font-weight:600;
 }
 .legend div{display:flex;align-items:center;gap:7px;margin:3px 0}
 .legend i{width:10px;height:10px;border-radius:99px;display:block}
 .stats3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px}
-.stat3{background:#fff;border-radius:14px;padding:13px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.stat3{background:var(--card);border-radius:14px;padding:13px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .stat3 img{width:22px;height:22px}
 .stat3 b{font-size:19px;font-weight:800}
 .stat3 span{font-size:12.5px;color:var(--gray)}
@@ -162,42 +257,42 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 
 /* ---------- карточки задач ---------- */
 .card-cta{
-  width:100%;display:flex;align-items:center;gap:12px;background:#fff;border-radius:var(--r);
+  width:100%;display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--r);
   padding:14px;margin-bottom:6px;text-align:left;box-shadow:0 1px 2px rgba(16,24,40,.05);
 }
-.card-cta:active{background:#f7f8fa}
+.card-cta:active{background:var(--chip)}
 .card-cta .plus{
   width:38px;height:38px;border-radius:10px;background:var(--green);color:#fff;font-size:22px;
   display:flex;align-items:center;justify-content:center;flex:0 0 38px;
 }
 .card-cta .ct{flex:1;font-size:16px;font-weight:700}
 .card-cta .cs{font-size:13px;color:var(--gray);margin-top:1px}
-.card-cta .arr{color:#c3c6cb;font-size:20px}
+.card-cta .arr{color:var(--gray);font-size:20px}
 .qcard{
-  display:flex;gap:12px;background:#fff;border-radius:var(--r);padding:13px;margin-bottom:9px;
+  display:flex;gap:12px;background:var(--card);border-radius:var(--r);padding:13px;margin-bottom:9px;
   box-shadow:0 1px 2px rgba(16,24,40,.05);text-align:left;width:100%;
 }
-.qcard:active{background:#f7f8fa}
-.qcard .qi{width:44px;height:44px;border-radius:11px;background:#f2f3f5;display:flex;align-items:center;justify-content:center;flex:0 0 44px}
+.qcard:active{background:var(--chip)}
+.qcard .qi{width:44px;height:44px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 44px}
 .qcard .qi img{width:30px;height:30px}
 .qcard .qm{flex:1;min-width:0}
 .qcard .qt{font-size:15.5px;font-weight:700;line-height:1.3}
 .qcard .qd{font-size:13.5px;color:var(--ink2);line-height:1.4;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .qcard .qc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.qcard .arr{color:#c3c6cb;font-size:18px;align-self:center}
+.qcard .arr{color:var(--gray);font-size:18px;align-self:center}
 .qcard.dim{opacity:.62}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px;margin:2px 0 14px;scrollbar-width:none}
 .fchip{
-  flex:0 0 auto;display:flex;align-items:center;gap:7px;background:#eef0f3;border-radius:99px;
+  flex:0 0 auto;display:flex;align-items:center;gap:7px;background:var(--chip);border-radius:99px;
   padding:9px 15px;font-size:14px;font-weight:600;color:var(--ink2);
 }
 .fchip img{width:17px;height:17px}
-.fchip.on{background:var(--blue);color:#fff}
+.fchip.on{background:var(--blue);color:var(--btn-ink)}
 
 /* ---------- таббар ---------- */
 #tabs{
   position:absolute;left:0;right:0;bottom:0;z-index:20;
-  display:flex;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
+  display:flex;background:var(--tabs-bg);backdrop-filter:blur(12px);
   border-top:1px solid var(--line);padding:7px 6px calc(7px + var(--safe-b));
 }
 .tab{
@@ -212,58 +307,58 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 #backdrop.on{opacity:1;pointer-events:auto}
 #sheet{
   position:fixed;left:50%;bottom:0;transform:translate(-50%,100%);
-  width:100%;max-width:480px;z-index:60;background:#fff;
-  border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;
+  width:100%;max-width:480px;z-index:60;background:var(--card);
+  border-radius:20px 20px 0 0;max-height:92dvh;display:flex;flex-direction:column;
   transition:transform .28s cubic-bezier(.32,.72,.28,1.05);
   padding-bottom:var(--safe-b);
 }
 #sheet.on{transform:translate(-50%,0)}
-.s-grab{width:40px;height:5px;border-radius:99px;background:#d9dbdf;margin:9px auto 3px;flex:0 0 auto}
+.s-grab{width:40px;height:5px;border-radius:99px;background:var(--line);margin:9px auto 3px;flex:0 0 auto}
 .s-head{display:flex;align-items:center;gap:11px;padding:10px 18px 12px;flex:0 0 auto}
 .s-head img{width:26px;height:26px}
 .s-head h2{flex:1;font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.s-close{width:32px;height:32px;border-radius:99px;background:#eef0f3;color:#555;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 32px}
+.s-close{width:32px;height:32px;border-radius:99px;background:var(--chip);color:var(--ink2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 32px}
 .s-body{overflow-y:auto;padding:2px 18px 22px}
 .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
 .kv:last-child{border:none}
 .kv span{color:var(--gray)}
 .kv b{font-weight:700;text-align:right;max-width:60%}
 .iphoto{
-  border:2px dashed #d5d8dd;border-radius:14px;background:#f7f8fa;min-height:86px;
+  border:2px dashed var(--line);border-radius:14px;background:var(--chip);min-height:86px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
   color:var(--gray);font-size:13.5px;padding:14px;text-align:center;margin:12px 0;cursor:pointer;
 }
 .iphoto svg{width:24px;height:24px;opacity:.7}
 .iphoto img{width:64px;height:64px;border-radius:8px}
 .tile{
-  width:100%;display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;
+  width:100%;display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;
   padding:13px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.05);text-align:left;
 }
-.tile:active{background:#f7f8fa}
+.tile:active{background:var(--chip)}
 .tile .ti{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 38px;color:#fff}
 .tile .ti img{width:22px;height:22px}
 .tile .tt{flex:1;font-size:15.5px;font-weight:700}
 .tile .ts{font-size:13px;color:var(--gray);margin-top:1px}
-.tile .arr{color:#c3c6cb;font-size:18px}
-.bigbtn{width:100%;background:var(--blue);color:#fff;font-size:17px;font-weight:700;padding:16px;border-radius:14px;margin-top:14px}
+.tile .arr{color:var(--gray);font-size:18px}
+.bigbtn{width:100%;background:var(--blue);color:var(--btn-ink);font-size:17px;font-weight:700;padding:16px;border-radius:14px;margin-top:14px}
 .bigbtn:active{opacity:.85}
 .bigbtn.red{background:var(--red)}
 .bigbtn.green{background:var(--green)}
 .fld{margin:13px 0}
 .fld label{display:block;font-size:11.5px;font-weight:700;color:var(--gray);letter-spacing:.6px;margin-bottom:7px}
 .fld input,.fld textarea{
-  width:100%;background:#eef0f3;border:none;border-radius:11px;padding:13px 14px;font-size:16px;
+  width:100%;background:var(--chip);border:none;border-radius:11px;padding:13px 14px;font-size:16px;
 }
 .fld input:focus,.fld textarea:focus{outline:none;background:#e6e9ed}
 .fld textarea{min-height:74px;resize:none;line-height:1.45}
 .fld .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .tchips{display:flex;gap:8px;flex-wrap:wrap}
 .tchip{
-  display:flex;align-items:center;gap:7px;background:#eef0f3;border-radius:99px;
+  display:flex;align-items:center;gap:7px;background:var(--chip);border-radius:99px;
   padding:10px 15px;font-size:14.5px;font-weight:600;
 }
 .tchip img{width:17px;height:17px}
-.tchip.on{background:var(--blue);color:#fff}
+.tchip.on{background:var(--blue);color:var(--btn-ink)}
 .aminor{font-size:12.5px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.5}
 
 /* ---------- стикер ---------- */
@@ -272,19 +367,19 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .sticker-url{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--gray);word-break:break-all;text-align:center}
 
 /* ---------- фонд ---------- */
-.bankcard{background:#fff;border-radius:var(--r);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.bankcard{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .bank-top{display:flex;justify-content:space-between;align-items:flex-start}
 .bank-top .bl{font-size:13.5px;color:var(--gray)}
 .bank-top .bv{font-size:30px;font-weight:800;margin-top:3px;letter-spacing:-.5px}
 .bank-top .mr{text-align:right;font-size:12.5px;color:var(--gray)}
 .bank-top .mr b{display:block;font-size:15px;color:var(--ink);margin-top:3px}
-.bar{height:9px;border-radius:99px;background:#e7e9ec;overflow:hidden;margin:13px 0 8px}
+.bar{height:9px;border-radius:99px;background:var(--line);overflow:hidden;margin:13px 0 8px}
 .bar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .5s}
 .bar i.green{background:var(--green)}
 .bank-sub{font-size:13px;color:var(--gray)}
 .actions3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:11px}
 .act3{
-  background:#fff;border-radius:14px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  background:var(--card);border-radius:14px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;
   font-size:14px;font-weight:700;color:var(--blue);box-shadow:0 1px 2px rgba(16,24,40,.05);
 }
 .act3:active{background:#f2f4f7}
@@ -294,9 +389,9 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .lastdist .lrow{display:flex;justify-content:space-between;font-size:14.5px;padding:6px 0;border-bottom:1px solid #dbe7f8}
 .lastdist .lrow:last-child{border:none}
 .lastdist b{font-weight:700}
-.proj{background:#fff;border-radius:var(--r);padding:14px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.proj{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .proj .pt{display:flex;gap:11px;align-items:center}
-.proj .pi{width:44px;height:44px;border-radius:11px;background:#f2f3f5;display:flex;align-items:center;justify-content:center;flex:0 0 44px}
+.proj .pi{width:44px;height:44px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 44px}
 .proj .pi img{width:30px;height:30px}
 .proj .pn{flex:1;min-width:0}
 .proj .pn b{font-size:15.5px;font-weight:700}
@@ -305,15 +400,15 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .proj .bar{margin:11px 0 9px}
 .proj .pb{display:flex;justify-content:space-between;align-items:center}
 .proj .pb span{font-size:13px;color:var(--gray)}
-.proj .add100{background:#eef0f3;color:var(--blue);font-size:13.5px;font-weight:700;padding:9px 13px;border-radius:10px}
+.proj .add100{background:var(--chip);color:var(--blue);font-size:13.5px;font-weight:700;padding:9px 13px;border-radius:10px}
 .proj .add100:disabled{opacity:.35}
 
 /* ---------- суд ---------- */
-.case{background:#fff;border-radius:var(--r);padding:15px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.case{background:var(--card);border-radius:var(--r);padding:15px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .case .ch{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .case .ct{font-size:16.5px;font-weight:800;line-height:1.3}
 .case .cd{font-size:13.5px;color:var(--gray);margin-top:5px;line-height:1.45}
-.case .cbar{height:9px;border-radius:99px;background:#e7e9ec;overflow:hidden;display:flex;margin:12px 0 8px}
+.case .cbar{height:9px;border-radius:99px;background:var(--line);overflow:hidden;display:flex;margin:12px 0 8px}
 .case .cbar i{height:100%;border-radius:99px}
 .case .cbar i.a{background:var(--blue)}
 .case .cbar i.b{background:var(--orange)}
@@ -321,7 +416,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .case .cv{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink2);font-weight:600}
 .case .cbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
 .case .cbtns.g3{grid-template-columns:1fr 1fr 1fr}
-.cbtn{background:#eef0f3;border-radius:10px;padding:11px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center}
+.cbtn{background:var(--chip);border-radius:10px;padding:11px;font-size:14px;font-weight:700;color:var(--ink2);text-align:center}
 .cbtn.on{background:var(--blue-l);color:var(--blue);box-shadow:inset 0 0 0 2px var(--blue)}
 .case .cfoot{display:flex;justify-content:space-between;font-size:12.5px;color:var(--gray);margin-top:9px}
 .case .cfoot .myvote{color:var(--blue);font-weight:700}
@@ -335,13 +430,13 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .tile3:active{opacity:.85}
 .tile3 img{width:34px;height:34px}
 .mecard{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 16px}
-.mecard canvas{background:#f2f3f5;border-radius:18px}
+.mecard canvas{background:var(--chip);border-radius:18px}
 .mecard .mn{font-size:17px;font-weight:800}
 .mecard .mnk{font-size:13.5px;color:var(--gray)}
 .pickrow{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
 .pickrow.g3{grid-template-columns:repeat(3,1fr)}
 .pick{
-  background:#fff;border-radius:13px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:var(--card);border-radius:13px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;
   border:2.5px solid transparent;box-shadow:0 1px 2px rgba(16,24,40,.05);
 }
 .pick img,.pick canvas{width:34px;height:34px}
@@ -350,44 +445,44 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .sw{width:44px;height:44px;border-radius:12px;background:var(--c);border:2.5px solid transparent;box-shadow:0 1px 2px rgba(16,24,40,.08)}
 .sw.on{border-color:var(--blue)}
 .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.sg{background:#fff;border-radius:14px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.sg{background:var(--card);border-radius:14px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .sg img{width:22px;height:22px}
 .sg i{display:block;font-style:normal;font-size:12px;color:var(--gray)}
 .sg b{font-size:17px;font-weight:800}
 .prog-row{display:flex;justify-content:space-between;font-size:14.5px;padding:7px 0;border-bottom:1px solid var(--line)}
 .prog-row:last-child{border:none}
 .badges8{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.bdg{background:#fff;border-radius:13px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.bdg{background:var(--card);border-radius:13px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .bdg img{width:30px;height:30px}
 .bdg span{font-size:10.5px;color:var(--gray);text-align:center;line-height:1.25;font-weight:600}
 .bdg.lock img{filter:grayscale(1);opacity:.35}
-.listcard{background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.listcard{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .lrow{
   width:100%;display:flex;align-items:center;gap:12px;padding:14px;text-align:left;
   border-bottom:1px solid var(--line);
 }
 .lrow:last-child{border:none}
-.lrow:active{background:#f7f8fa}
+.lrow:active{background:var(--chip)}
 .lrow .li{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 36px;color:#fff}
 .lrow .li img{width:20px;height:20px}
 .lrow .lt{flex:1;font-size:15.5px;font-weight:700}
 .lrow .ls{font-size:12.5px;color:var(--gray);margin-top:1px}
-.lrow .arr{color:#c3c6cb;font-size:18px}
+.lrow .arr{color:var(--gray);font-size:18px}
 .foot{font-size:12px;color:#b0b3b8;text-align:center;margin-top:16px;line-height:1.5}
 .upcard{text-align:center}
-.upcard label{font-size:14px;color:var(--gray);display:block;padding:16px;border:2px dashed #d5d8dd;border-radius:13px;cursor:pointer}
+.upcard label{font-size:14px;color:var(--gray);display:block;padding:16px;border:2px dashed var(--line);border-radius:13px;cursor:pointer}
 .upcard .rm{margin-top:9px;color:var(--blue);font-size:13.5px;font-weight:600}
 
 /* ---------- знания ---------- */
-.kbsec{background:#fff;border-radius:var(--r);overflow:hidden;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.kbsec{background:var(--card);border-radius:var(--r);overflow:hidden;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .kbsec-h{
   width:100%;display:flex;align-items:center;gap:12px;padding:14px;text-align:left;
 }
-.kbsec-h .ki{width:42px;height:42px;border-radius:11px;background:#f2f3f5;display:flex;align-items:center;justify-content:center;flex:0 0 42px}
+.kbsec-h .ki{width:42px;height:42px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 42px}
 .kbsec-h .ki img{width:28px;height:28px}
 .kbsec-h b{flex:1;font-size:16px;font-weight:800}
 .kbsec-h .kc{font-size:13px;color:var(--gray)}
-.kbsec-h .arr{color:#c3c6cb;font-size:18px;transition:transform .2s}
+.kbsec-h .arr{color:var(--gray);font-size:18px;transition:transform .2s}
 .kbsec.open .arr{transform:rotate(90deg)}
 .kbbody{display:none;padding:0 14px 14px}
 .kbsec.open .kbbody{display:block}
@@ -398,30 +493,30 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .kbc .kbig{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:9px 0 2px}
 .kbc .kbig small{font-size:13px;font-weight:500;color:var(--gray);letter-spacing:0}
 .kbc .kbar-l{display:flex;justify-content:space-between;font-size:12.5px;color:var(--gray);margin:9px 0 5px}
-.kbc .kbar{height:7px;border-radius:99px;background:#e7e9ec;overflow:hidden;margin-bottom:9px}
+.kbc .kbar{height:7px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:9px}
 .kbc .kbar i{display:block;height:100%;border-radius:99px;background:var(--blue)}
 .kbc .kact{font-size:13.5px;color:var(--blue);font-weight:600}
 .kb-illust{width:44px;height:44px;float:right;margin-left:10px}
 .back-row{display:flex;align-items:center;gap:12px;margin:2px 0 14px}
 .back-btn{
-  width:36px;height:36px;border-radius:99px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);
+  width:36px;height:36px;border-radius:99px;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.1);
   display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink);
 }
 .back-row h1{font-size:24px;font-weight:800}
 
 /* ---------- лента / админ ---------- */
-.post{background:#fff;border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.post{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .post .ph{display:flex;align-items:center;gap:9px;margin-bottom:7px}
 .post .pa{font-size:14.5px;font-weight:800;flex:1}
 .post .pt{font-size:12px;color:var(--gray)}
 .post .pb{font-size:14.5px;line-height:1.45}
 .post .pi{margin-top:9px;width:100%;max-width:220px;border-radius:10px}
-.xb{width:30px;height:30px;border-radius:99px;background:#fdecec;color:var(--red);font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 30px}
+.xb{width:30px;height:30px;border-radius:99px;background:var(--red-l);color:var(--red);font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 30px}
 .atabs{display:flex;gap:7px;overflow-x:auto;padding:2px;margin-bottom:13px;scrollbar-width:none}
 .atab{
-  flex:0 0 auto;background:#eef0f3;border-radius:99px;padding:9px 15px;font-size:14px;font-weight:700;color:var(--ink2);
+  flex:0 0 auto;background:var(--chip);border-radius:99px;padding:9px 15px;font-size:14px;font-weight:700;color:var(--ink2);
 }
-.atab.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);color:var(--ink)}
+.atab.on{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.12);color:var(--ink)}
 .apanel{display:none}
 .apanel.on{display:block}
 .botcard{display:flex;flex-direction:column;gap:9px;margin-bottom:13px}
@@ -429,7 +524,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .dot{width:9px;height:9px;border-radius:99px;background:var(--green)}
 .dot.err{background:var(--red)}
 .botcard .brow{display:flex;gap:8px}
-.botcard input{flex:1;background:#eef0f3;border:none;border-radius:10px;padding:10px 12px;font-size:14px;min-width:0}
+.botcard input{flex:1;background:var(--chip);border:none;border-radius:10px;padding:10px 12px;font-size:14px;min-width:0}
 .botcard .bnote{font-size:12px;color:var(--gray);line-height:1.5}
 .moder-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
 .moder-item:last-child{border:none}
@@ -438,7 +533,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .moder-item .md{font-size:12.5px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mok,.mno{width:34px;height:34px;border-radius:99px;font-size:15px;flex:0 0 34px;display:flex;align-items:center;justify-content:center}
 .mok{background:var(--green-l);color:var(--green)}
-.mno{background:#fdecec;color:var(--red)}
+.mno{background:var(--red-l);color:var(--red)}
 
 /* ---------- toast ---------- */
 #toast{
@@ -476,8 +571,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   <h1>Вход только через Telegram</h1>
   <p>«21» — районная сеть для своих. Аккаунт берётся из Telegram: имя, аватар и никнейм, ничего заполнять не нужно.</p>
   <div class="gstatus" id="gateStatus"></div>
-  <button class="btn ghost" id="btnDevLogin" style="max-width:320px">Войти как разработчик</button>
-  <div class="gnote">Кнопка входа работает на домене, привязанном к боту @twentyonemovementbot через /setdomain.</div>
+  <button class="btn ghost" id="btnDevLogin" style="max-width:320px;display:none">Войти как разработчик</button>
 </div>
 
 <!-- онбординг -->
@@ -492,25 +586,22 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 <!-- приложение -->
 <div id="app" style="display:none">
   <header id="hdr">
-    <canvas class="hav" id="hdrAvatar" width="16" height="32"></canvas>
+    <img class="hlogo" src="assets/logo.png" alt="21">
     <div class="hinfo">
-      <div class="hname" id="hdrName">—</div>
-      <div class="hlvl" id="hdrLvl">Уровень 1 · 0/50 XP</div>
-      <div class="hbar"><i id="hdrBar" style="width:0%"></i></div>
+      <div class="hname">21 · район</div>
+      <div class="hlvl"><b id="hdrMembers">…</b> человек в сообществе</div>
     </div>
     <div class="hchips">
       <span class="hchip"><img src="assets/ic_heart.png" alt=""> <span id="hdrKarma">0</span></span>
       <span class="hchip"><img src="assets/ic_coin.png" alt=""> <span id="hdrWallet">0</span></span>
     </div>
-    <button id="btnHdrQR" title="Стикер с QR">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 12h7v7H3v-7zm2 2v3h3v-3H5zm10-2h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v3h-2v-3zm4 0h2v5h-5v-2h3v-3z" fill="#fff"/></svg>
-    </button>
+    <button id="btnHdrQR" title="Стикеры с QR"><img src="assets/ic_qr.png" alt="QR"></button>
   </header>
 
   <main id="main">
     <!-- КАРТА -->
     <section class="scr" id="scr-map">
-      <div class="pg-head"><h1>Карта района</h1><span class="chip gray2" id="mapChip">Яндекс.Карты</span></div>
+      <div class="pg-head"><h1>Карта</h1><span class="chip gray2" id="mapChip">Яндекс.Карты</span></div>
       <div class="mapbox">
         <div id="ymapbox"></div>
         <div class="map-ctl" id="mapCtl" style="display:none">
@@ -519,9 +610,9 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
           <button id="mMyLoc">◎</button>
         </div>
         <div class="legend">
-          <div><i style="background:#007aff"></i>квест</div>
-          <div><i style="background:#ff3b30"></i>проблема</div>
-          <div><i style="background:#b0b3b8"></i>решено</div>
+          <div><i style="background:#007aff"></i>открыто</div>
+          <div><i style="background:#ff9500"></i>в работе</div>
+          <div><i style="background:#34c759"></i>решено</div>
         </div>
       </div>
       <div class="stats3">
@@ -534,13 +625,15 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <span><span class="ct">Сообщить о проблеме</span><div class="cs">фото, точка на карте, модерация</div></span>
         <span class="arr">›</span>
       </button>
+      <div class="strike"><s>ПРОБЛЕМЫ</s>ЗАДАЧИ</div>
+      <div class="catdots" id="mapCats"></div>
       <div class="sec-label" id="nearLabel">ТОЧКИ РЯДОМ · 0</div>
       <div id="nearList"></div>
     </section>
 
     <!-- ЗАДАЧИ -->
     <section class="scr" id="scr-tasks">
-      <div class="pg-head"><h1>Задачи двора</h1></div>
+      <div class="pg-head"><h1>Наши задачи</h1></div>
       <div class="chips" id="qFilters"></div>
       <button class="card-cta" id="taskReport">
         <span class="plus">+</span>
@@ -570,21 +663,18 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
       </div>
       <div class="actions3">
         <button class="act3" id="btnDeposit"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M11 4v14M4 11h14"/></svg>Внести</button>
-        <button class="act3" id="btnAI"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12.5 3 5 12.5h5L10.5 19 18 9.5h-5L12.5 3z"/></svg>AI-раздача</button>
+        <button class="act3" id="btnShare"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4v10M7 10l4 4 4-4M4 18h14"/></svg>Распределить</button>
         <button class="act3" id="btnJournal"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h14M4 11h14M4 16h9"/></svg>Журнал</button>
       </div>
-      <div class="lastdist" id="lastDist" style="display:none">
-        <div class="ldt">ПОСЛЕДНЯЯ РАЗДАЧА</div>
-        <div id="lastDistRows"></div>
-      </div>
+      <div class="paybox" id="payWallet"><div class="aminor">Кошелёк выплат GRAM · загрузка…</div></div>
       <div class="sec-label">ПРОЕКТЫ</div>
       <div id="projList"></div>
     </section>
 
     <!-- СУД -->
     <section class="scr" id="scr-court">
-      <div class="pg-head"><h1>Суд соседей</h1></div>
-      <div class="note">Голос весит по карме: 1 голос + карма/50. Решение проходит при кворуме 12 голосов.</div>
+      <div class="pg-head"><h1>Важное</h1></div>
+      <div class="note">Сбор мнений по ключевым спорным решениям района. Голос весит по карме: 1 + карма/50. Решение — при кворуме 12 голосов.</div>
       <span class="chip" style="margin-bottom:12px"><img src="assets/ic_heart.png" style="width:14px;height:14px">вес твоего голоса: <b id="voteWeight">1</b></span>
       <div id="caseList"></div>
     </section>
@@ -593,26 +683,28 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
     <section class="scr" id="scr-me">
       <div class="pg-head"><h1>Профиль</h1></div>
       <div class="tiles3">
-        <button class="tile3" id="tileHow" style="background:#d6ecff"><img src="assets/qt_help.png">Как работает 21</button>
-        <button class="tile3" id="tileRules" style="background:#e6dcff"><img src="assets/dd_cat.png">Правила суда</button>
-        <button class="tile3" id="tileQR" style="background:#d9f2e4"><img src="assets/ic_qr.png">Стикеры с QR</button>
+        <button class="tile3" id="tileHow" style="background:var(--blue-l)"><img src="assets/qt_help.png">Как работает 21</button>
+        <button class="tile3" id="tileRules" style="background:var(--violet-l)"><img src="assets/ic_court.png">Правила важного</button>
+        <button class="tile3" id="tileQR" style="background:var(--green-l)"><img src="assets/ic_qr.png">Стикеры с QR</button>
       </div>
       <div class="card mecard">
-        <canvas id="meAvatar" width="16" height="32" style="width:96px;height:192px"></canvas>
+        <img id="meAvaImg" class="meava" src="assets/logo.png" alt="">
         <div class="mn" id="meName">—</div>
         <div class="mnk" id="meNick">@—</div>
-        <input id="meNameInp" type="text" maxlength="18" style="width:100%;background:#eef0f3;border:none;border-radius:11px;padding:11px 14px;font-size:15px;text-align:center;font-weight:700">
+        <input id="meNameInp" type="text" maxlength="18" placeholder="Имя" style="width:100%;background:#eef0f3;border:none;border-radius:11px;padding:11px 14px;font-size:15px;text-align:center;font-weight:700">
+        <input id="meNickInp" type="text" maxlength="18" placeholder="@никнейм в экосистеме 21" style="width:100%;background:#eef0f3;border:none;border-radius:11px;padding:11px 14px;font-size:14px;text-align:center;margin-top:7px">
       </div>
-      <div class="sec-label">ГОЛОВА</div>
-      <div class="pickrow" id="headPick"></div>
-      <div class="sec-label">ТЕЛО</div>
-      <div class="pickrow g3" id="bodyPick"></div>
-      <div class="sec-label">ЦВЕТ</div>
-      <div class="swrow" id="tintPick"></div>
-      <div class="card upcard" style="margin-top:14px">
-        <label for="photoInp">Загрузить своё фото профиля</label>
+      <div class="card upcard" style="margin-top:10px">
+        <label for="photoInp">Своё фото профиля</label>
         <input type="file" id="photoInp" accept="image/*" style="display:none">
-        <button class="rm" id="photoRm" style="display:none">Убрать фото</button>
+        <button class="rm" id="photoRm" style="display:none">Вернуть логотип 21</button>
+      </div>
+      <div class="sec-label">СЕКТОР РАЙОНА · донаты идут сюда</div>
+      <div class="chips" id="sectorPick"></div>
+      <div class="sec-label">TG-КОШЕЛЁК · выплата в GRAM</div>
+      <div class="card" style="padding:10px 12px">
+        <input id="tonInp" type="text" placeholder="UQ…-адрес или @ник (ник.ton)" style="width:100%;background:#eef0f3;border:none;border-radius:11px;padding:11px 14px;font-size:14px;font-weight:600;text-align:center">
+        <div class="aminor" style="margin-top:7px">Куда модератор отправит GRAM после проверки работы</div>
       </div>
       <div class="statgrid" style="margin-top:12px">
         <div class="sg"><img src="assets/ic_lvl.png"><div><i>Уровень</i><b id="sgLvl">1</b></div></div>
@@ -626,14 +718,14 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <div class="bar" style="margin:0 0 10px"><i id="pgBar" style="width:0%"></i></div>
         <div class="prog-row"><span>Задач закрыто</span><b id="pgDone">0</b></div>
         <div class="prog-row"><span>Внесено в фонд</span><b id="pgDonated">0 ₽</b></div>
-        <div class="prog-row"><span>Голосов в суде</span><b id="pgVotes">0</b></div>
+        <div class="prog-row"><span>Голосов по важному</span><b id="pgVotes">0</b></div>
         <div class="prog-row"><span>Статей прочитано</span><b id="pgRead">0</b></div>
       </div>
       <div class="sec-label">ДОСТИЖЕНИЯ</div>
       <div class="badges8" id="badgeGrid"></div>
       <div class="sec-label">ЕЩЁ</div>
       <div class="listcard" id="meMore"></div>
-      <div class="foot">21 — районная ОС: вход через Telegram, данные района — на сервере</div>
+      <div class="foot">21 — районная ОС · вход через Telegram</div>
     </section>
 
     <!-- ЗНАНИЯ -->
@@ -653,13 +745,14 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
     <section class="scr" id="scr-admin">
       <div class="back-row"><button class="back-btn" data-back="scr-me">‹</button><h1>Админ-панель</h1></div>
       <div class="card botcard">
-        <div class="bh"><span class="dot" id="botDot"></span><span id="botTitle">Бот</span><span class="chip gray2" id="botChip">проверка…</span></div>
+        <div class="bh"><span class="dot" id="botDot"></span><span id="botTitle">Связь</span><span class="chip gray2" id="botChip">…</span></div>
         <div class="brow">
           <input id="botChatInp" type="text" inputmode="numeric" placeholder="Chat ID">
           <button class="btn ghost sm" id="botFind">Найти мой чат</button>
           <button class="btn ghost sm" id="botTest">Тест</button>
+          <span class="chip orange" id="botQueueChip" style="display:none"></span>
         </div>
-        <div class="bnote">Чтобы найти чат — отправьте боту /start в Telegram, затем нажмите «Найти мой чат». Заявки и действия админа приходят сюда.</div>
+        <div class="bnote">Все админ-события — заявки, точки, посты, дела, проекты и голоса — уходят в закрытый Telegram-чат района. Без связи события становятся в очередь и отправляются при соединении.</div>
       </div>
       <div class="atabs" id="aTabs">
         <button class="atab on" data-apt="point">Точка</button>
@@ -667,6 +760,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <button class="atab" data-apt="case">Дело</button>
         <button class="atab" data-apt="project">Проект</button>
         <button class="atab" data-apt="feed">Лента</button>
+        <button class="atab" data-apt="payout">Выплаты</button>
       </div>
       <div class="apanel on" id="ap-point">
         <div id="modBlock" style="display:none">
@@ -688,6 +782,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         </div>
         <button class="bigbtn" id="apAddPoint">Добавить точку на карту</button>
       </div>
+      <div class="apanel" id="ap-payout"><div class="sec-label" style="margin-top:0" id="payLabel">ОЖИДАЮТ ПОДТВЕРЖДЕНИЯ · 0</div><div class="card" id="payList"></div><div class="aminor" style="margin-top:8px">Выплата = GRAM на TG-кошелёк исполнителя. Открой перевод по кнопке — после отправки подтверди «Выплачено».</div></div>
       <div class="apanel" id="ap-post">
         <div class="fld"><label>АВТОР</label><input id="apPostAuthor" type="text" maxlength="18" value="район"></div>
         <div class="fld"><label>ТЕКСТ</label><textarea id="apPostText" maxlength="200" placeholder="Новость для ленты"></textarea></div>
@@ -725,8 +820,8 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
     <button class="tab on" data-tab="scr-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Карта</button>
     <button class="tab" data-tab="scr-tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 2 2 3.5-3.5M8 15.5h8"/></svg>Задачи</button>
     <button class="tab" data-tab="scr-fund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/></svg>Фонд</button>
-    <button class="tab" data-tab="scr-court"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 21h14M12 6H6l-3 6c0 1.7 1.3 3 3 3s3-1.3 3-3L6 6m12 0h-6l-3 6c0 1.7 1.3 3 3 3s3-1.3 3-3l-3-6"/></svg>Суд</button>
-    <button class="tab" data-tab="scr-me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-3.6 4.3-5.5 8-5.5s6.8 1.9 8 5.5"/></svg>Я</button>
+    <button class="tab" data-tab="scr-court"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 21h14M12 6H6l-3 6c0 1.7 1.3 3 3 3s3-1.3 3-3L6 6m12 0h-6l-3 6c0 1.7 1.3 3 3 3s3-1.3 3-3l-3-6"/></svg>Важное</button>
+    <button class="tab" data-tab="scr-me"><img class="tablogo" src="assets/logo.png" alt=""/>21</button>
   </nav>
 </div>
 
@@ -748,7 +843,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 <script>
 /* ================================================================
    21 — районная сеть · Telegram Mini App
-   данные: localStorage · модерация/админ: Telegram-бот
+   данные: localStorage · модерация/админ — на стороне приложения
    ================================================================ */
 'use strict';
 /*QR:BEGIN*/
@@ -941,10 +1036,10 @@ const QR21 = (function () {
 /*QR:END*/
 
 /* ---------------- константы ---------------- */
-const BOT_TOKEN = '7959763404:AAH15izShgtmYwc9M8vY1oAjXZQ1qhV2yAY';
-const TG_API = 'https://api.telegram.org/bot' + BOT_TOKEN;
-const ADMIN_TG = '@stonym0ntana';
-const BOT_HANDLE = '@twentyonemovementbot';
+/* Клиент не хранит секретов: служебные обращения идут на сервер приложения
+   (base: window.OS21_BOT_API → '/api/bot'), сервер сам отвечает за доставку. */
+const TG_API = ((window.OS21_BOT_API || '/api/bot') + '').replace(/\/+$/, '');
+const ADMIN_CHAT = 1896036065;              // tg chat id админа — сюда шлются все события по умолчанию
 const CENTER = [48.7890, 44.7795];           // Волгоградский, район
 const LEVEL_XP = 50;
 const QUORUM = 12;
@@ -954,23 +1049,29 @@ const uid = () => 'i' + Math.random().toString(36).slice(2, 9);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtR = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
 const imgTag = (src, cls) => { const i = document.createElement('img'); i.src = src; if (cls) i.className = cls; i.alt = ''; return i; };
+// assets/путь: принимает имя с .png или без — раньше из-за двойного расширения строки профиля ломались
+const assetPath = n => 'assets/' + (n.endsWith('.png') ? n : n + '.png');
 
 const TYPES = {
-  fix:   { n: 'починить',       icon: 'qt_fix' },
-  help:  { n: 'помочь',         icon: 'qt_help' },
-  swap:  { n: 'обменять',       icon: 'qt_swap' },
-  class: { n: 'мастер-класс',   icon: 'qt_class' },
+  fix:   { n: 'починить',     icon: 'qt_fix' },
+  help:  { n: 'помочь',       icon: 'qt_help' },
+  swap:  { n: 'обменять',     icon: 'qt_swap' },
+  class: { n: 'мастер-класс', icon: 'qt_class' },
+  clean: { n: 'уборка',       icon: 'qt_clean' },
 };
-const TINT_SRC = [119, 119, 119];
-const FACES = ['assets/face0.png', 'assets/face1.png', 'assets/face2.png', 'assets/face3.png'];
-const BODIES = ['assets/body0.png', 'assets/body1.png', 'assets/body2.png'];
-const TINTS = ['#000000', '#999999', '#d4a373'];
+/* Базовые цены ордеров: категория → ₽ из фонда (фонд платит по мере роста) */
+const ORDER_PRICE = { clean: 200, help: 300, fix: 500, swap: 0, class: 0 };
+function orderPrice(type, desc) {
+  const base = ORDER_PRICE[type] || 200;
+  const long = desc && desc.length > 80 ? 1.25 : 1;
+  return Math.round(base * long / 10) * 10;
+}
 
 /* ---------------- состояние ---------------- */
 const LS_KEY = 'os21_v4';
 const SEED = () => ({
   v: 4,
-  bot: { chatId: null },
+  bot: { chatId: ADMIN_CHAT, queue: [] },
   user: null,
   quests: [
     { id: 'q1', type: 'fix',   title: 'Скамейка у 19-го дома', desc: 'Оторваны две доски. Нужны саморезы и шуруповёрт. Материалы — из фонда.', x: 48.7890, y: 44.7755, xp: 40, karma: 6, budget: 900, reward: 100, author: 'район', status: 'active', takenBy: null },
@@ -990,6 +1091,8 @@ const SEED = () => ({
     { id: 'p4', title: 'Холодильник добра', urg: 5, goal: 7000, raised: 2400, icon: 'qt_help' },
   ],
   fund: { bank: 18400, goal: 40000, myContrib: 0, lastDist: null },
+  payouts: [],
+  community: 0,
   log: [],
   cases: [
     { id: 'c1', title: 'Граффити на трансформаторной', desc: 'Согласовать эскиз с пиксель-цветком.', opts: [{ id: 'a', label: 'За', votes: 11 }, { id: 'b', label: 'Против', votes: 1 }], my: null, days: 2 },
@@ -1000,12 +1103,14 @@ const SEED = () => ({
     { id: uid(), author: 'район', text: 'Мастерская двора открыта: инструмент — по записи у старшего по корпусу.', img: 'assets/qt_fix.png', ts: Date.now() - 86400000 * 2 },
     { id: uid(), author: 'Аня', text: 'Нашли котёнка у 12-го подъезда. Ищем дом, кормим у колонки.', img: 'assets/dd_cat.png', ts: Date.now() - 86400000 },
   ],
-  kb: { read: { water: [0, 0, 0], energy: [0, 0, 0], food: [0, 0, 0], repair: [0, 0, 0] } },
+  kb: { read: { water: [0, 0, 0], energy: [0, 0, 0], food: [0, 0, 0], repair: [0, 0, 0], clean: [0, 0, 0] } },
   badges: {},
 });
 let st;
 try { st = JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch (e) { st = null; }
 if (!st || st.v !== 4) st = SEED();
+if (!st.bot) st.bot = { queue: [] };
+if (st.bot.chatId == null) st.bot.chatId = ADMIN_CHAT;   // старые профили без чата → админ-чат
 const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(st)); } catch (e) {} };
 
 /* ---------------- XP / карма / кошелёк ---------------- */
@@ -1053,6 +1158,8 @@ function toast(msg, icon) {
   t.classList.add('on');
   clearTimeout(toastT);
   toastT = setTimeout(() => t.classList.remove('on'), 2300);
+  if (/success\.gif|ic_check/.test(icon || '') || /^[+Б]|Внесено|Голос учтён/.test(msg)) tgNotify('success');
+  else if (/Не удалось|ошибк|обязателен/i.test(msg)) tgNotify('error');
 }
 
 /* ---------------- кэш картинок ---------------- */
@@ -1068,46 +1175,6 @@ function loadImg(src, cross = false) {
   });
 }
 
-/* ---------------- персонаж: голова + тело ---------------- */
-const tintCache = new Map();
-function tintedFace(url, tint) {
-  const key = url + '|' + tint;
-  if (tintCache.has(key)) return tintCache.get(key);
-  return loadImg(url).then(src => {
-    const c = document.createElement('canvas'); c.width = 16; c.height = 16;
-    const cx = c.getContext('2d');
-    cx.drawImage(src, 0, 0);
-    try {
-      const d = cx.getImageData(0, 0, 16, 16), p = d.data;
-      const [tr, tg2, tb] = hexRgb(tint);
-      for (let i = 0; i < p.length; i += 4) {
-        if (p[i] === TINT_SRC[0] && p[i + 1] === TINT_SRC[1] && p[i + 2] === TINT_SRC[2]) {
-          p[i] = tr; p[i + 1] = tg2; p[i + 2] = tb;
-        }
-      }
-      cx.putImageData(d, 0, 0);
-    } catch (e) {}
-    tintCache.set(key, c);
-    return c;
-  });
-}
-function hexRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
-async function drawAvatar(ctx, av, w, h) {
-  const c = document.createElement('canvas'); c.width = 16; c.height = 32;
-  const cx = c.getContext('2d');
-  if (av.head === 'custom' && av.custom) {
-    const i = await loadImg(av.custom);
-    cx.drawImage(i, 0, 0);
-  } else {
-    const f = await tintedFace(FACES[av.head || 0], av.tint || '#999999');
-    cx.drawImage(f, 0, 0);
-  }
-  const b = await loadImg(BODIES[av.body || 0]);
-  cx.drawImage(b, 0, 16);
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, w, h);
-  ctx.drawImage(c, 0, 0, 16, 32, 0, 0, w, h);
-}
 
 /* ---------------- пикселизация фото ---------------- */
 function pixelateFile(file, maxPx = 48) {
@@ -1166,10 +1233,36 @@ function tgUser() {
   } catch (e) { return null; }
 }
 async function tg(method, params) {
+  if (!TG_API) throw new Error('bot relay not configured');
   const r = await fetch(TG_API + '/' + method, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params || {}),
   });
+  if (!r.ok && r.status === 404) throw new Error('bot relay not found');
   return r.json();
+}
+/* очередь админ-событий: «всё через бота» — при недоступном реле не теряем */
+function queueBotMsg(text) {
+  try {
+    const q = st.bot.queue || (st.bot.queue = []);
+    q.push({ t: Date.now(), text: String(text).slice(0, 1000) });
+    while (q.length > 50) q.shift();
+    save();
+  } catch (e) {}
+}
+async function flushBotQueue() {
+  if (!TG_API || !st.bot || !st.bot.chatId || st.bot.chatId === 0) return;
+  const q = (st.bot.queue || []).slice();
+  if (!q.length) return;
+  let sent = 0;
+  for (const m of q) {
+    try { const j = await tg('sendMessage', { chat_id: st.bot.chatId, text: m.text }); if (!j || !j.ok) break; sent++; }
+    catch (e) { break; }
+  }
+  if (sent) {
+    st.bot.queue = q.slice(sent);
+    save();
+    toast('Отправлено из очереди: ' + sent, 'assets/ic_check.png');
+  }
 }
 async function botStatus() {
   try {
@@ -1177,27 +1270,43 @@ async function botStatus() {
     botMe = j.ok ? j.result : null;
   } catch (e) { botMe = null; }
   renderBotCard();
+  if (botMe) flushBotQueue();
 }
 async function botNotify(text) {
-  if (!st.bot.chatId) return false;
-  try { const j = await tg('sendMessage', { chat_id: st.bot.chatId, text }); return !!j.ok; }
-  catch (e) { return false; }
+  if (st.bot.chatId === 0) return false;                       // отправки выключены
+  if (!st.bot.chatId) { queueBotMsg(text); return false; }
+  try {
+    const j = await tg('sendMessage', { chat_id: st.bot.chatId, text });
+    if (j && j.ok) return true;
+    queueBotMsg(text);
+    return false;
+  } catch (e) { queueBotMsg(text); return false; }
 }
 function renderBotCard() {
   const dot = $('#botDot'), title = $('#botTitle'), chip = $('#botChip');
+  const inp = $('#botChatInp');
+  if (inp && document.activeElement !== inp) inp.value = st.bot.chatId ? String(st.bot.chatId) : '';
   if (botMe) {
     dot.classList.remove('err');
-    title.textContent = 'Бот ' + (botMe.username ? '@' + botMe.username : '') + ' · подключён';
-    chip.textContent = st.bot.chatId ? 'чат ' + st.bot.chatId : 'нет чата';
+    title.textContent = 'Связь · подключена';
+    chip.textContent = st.bot.chatId === 0 ? 'отправки выкл' : st.bot.chatId ? 'чат ' + st.bot.chatId : 'нет чата';
   } else {
     dot.classList.add('err');
-    title.textContent = 'Бот';
+    title.textContent = 'Связь';
     chip.textContent = 'нет соединения';
   }
+  try {
+    const n = (st.bot && st.bot.queue && st.bot.queue.length) || 0;
+    const qc = $('#botQueueChip');
+    if (qc) qc.style.display = n ? '' : 'none', qc.textContent = 'очередь: ' + n;
+  } catch (e) {}
 }
 $('#botChatInp').addEventListener('change', () => {
-  st.bot.chatId = parseInt($('#botChatInp').value, 10) || null;
-  save(); renderBotCard();
+  const v = $('#botChatInp').value.trim();
+  st.bot.chatId = v === '' ? ADMIN_CHAT : (parseInt(v, 10) || 0);   // пусто = админ-чат, 0 = выкл
+  save();
+  renderBotCard();
+  flushBotQueue();
 });
 $('#botFind').addEventListener('click', async () => {
   toast('Находим…');
@@ -1209,7 +1318,7 @@ $('#botFind').addEventListener('click', async () => {
       const m = u.message || u.edited_message || u.channel_post;
       if (m && m.chat && (!best || u.update_id > best.id)) best = { id: u.update_id, chat: m.chat };
     });
-    if (!best) { toast('Отправьте боту /start, повторите', ''); return; }
+    if (!best) { toast('Чат не найден — попробуйте ещё раз', ''); return; }
     st.bot.chatId = best.chat.id;
     save();
     $('#botChatInp').value = st.bot.chatId;
@@ -1225,7 +1334,24 @@ $('#botTest').addEventListener('click', async () => {
 /* ================================================================
    ЭКРАНЫ / ШТОРКА
    ================================================================ */
+const __TABS = new Set(['scr-map', 'scr-tasks', 'scr-fund', 'scr-court', 'scr-me']);
+function tgBackTo(onClick) {
+  const t = window.__tg;
+  if (!t || !t.BackButton) return;
+  try {
+    if (window.__bbId != null) { t.BackButton.offClick(window.__bbId); window.__bbId = null; }
+    if (onClick) { t.BackButton.show(); window.__bbId = t.BackButton.onClick(onClick); }
+    else t.BackButton.hide();
+  } catch (e) {}
+}
+function tgSyncBack() {
+  if (window.__sheetOpen) tgBackTo(() => closeSheet());
+  else if (!__TABS.has(window.__scrNow || 'scr-map')) tgBackTo(() => showScreen(window.__scrBase || 'scr-map'));
+  else tgBackTo(null);
+}
 function showScreen(id) {
+  window.__scrNow = id;
+  if (__TABS.has(id)) window.__scrBase = id;
   document.querySelectorAll('.scr').forEach(s => s.classList.remove('on'));
   $('#' + id).classList.add('on');
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === id));
@@ -1238,8 +1364,9 @@ function showScreen(id) {
   if (id === 'scr-kb') renderKB();
   if (id === 'scr-feed') renderFeed();
   if (id === 'scr-admin') renderAdmin();
+  tgSyncBack();
 }
-document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showScreen(t.dataset.tab)));
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { tgHaptic('selection'); showScreen(t.dataset.tab); }));
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => showScreen(b.dataset.back)));
 
 const sheet = $('#sheet'), backdrop = $('#backdrop');
@@ -1253,10 +1380,14 @@ function openSheet(icon, title, html) {
   backdrop.classList.add('on');
   sheet.classList.add('on');
   body.scrollTop = 0;
+  window.__sheetOpen = true;
+  tgSyncBack();
 }
 function closeSheet() {
   sheet.classList.remove('on');
   backdrop.classList.remove('on');
+  window.__sheetOpen = false;
+  tgSyncBack();
 }
 $('#sheetClose').addEventListener('click', closeSheet);
 backdrop.addEventListener('click', closeSheet);
@@ -1318,7 +1449,7 @@ function refreshMarkers() {
   st.quests.forEach(q => {
     const m = new ymaps.Placemark([q.x, q.y], {}, {
       preset: 'islands#pin',
-      iconColor: q.type === 'fix' ? '#ff9500' : pinColor(q),
+      iconColor: q.status === 'done' ? '#34c759' : (q.status === 'doing' || q.status === 'verify') ? '#ff9500' : '#007aff',
       iconShape: { type: 'Circle', coordinates: [0, -8], radius: 6 },
     });
     m.events.add('click', () => openQuest(q.id));
@@ -1326,7 +1457,7 @@ function refreshMarkers() {
   });
   st.requests.forEach(r => {
     const m = new ymaps.Placemark([r.x, r.y], {}, {
-      preset: 'islands#pin', iconColor: '#ff3b30',
+      preset: 'islands#pin', iconColor: '#007aff',
       iconShape: { type: 'Circle', coordinates: [0, -8], radius: 6 },
     });
     ymap.add(m); ymarks.push(m);
@@ -1341,25 +1472,39 @@ function proj(lat, lng) {
 function refreshStaticMarkers(fb) {
   if (!fb) return;
   fb.querySelectorAll('.fmark').forEach(m => m.remove());
-  const mk = (lat, lng, icon, onClick) => {
+  const mk = (lat, lng, icon, onClick, cls) => {
     const [x, y] = proj(lat, lng);
-    const d = el('div', 'fmark');
+    const d = el('div', 'fmark' + (cls ? ' ' + cls : ''));
     d.style.left = x + '%'; d.style.top = y + '%';
     d.appendChild(imgTag('assets/' + icon + '.png'));
     d.addEventListener('click', e => { e.stopPropagation(); onClick(); });
     fb.appendChild(d);
   };
-  st.quests.forEach(q => mk(q.x, q.y, q.status === 'done' ? 'mk_done' : 'mk_quest', () => openQuest(q.id)));
-  st.requests.forEach(r => mk(r.x, r.y, 'mk_problem', () => {}));
+  const stCls = q => q.status === 'done' ? 's-done' : (q.status === 'doing' || q.status === 'verify') ? 's-doing' : 's-open';
+  st.quests.forEach(q => mk(q.x, q.y, q.status === 'done' ? 'mk_done' : (TYPES[q.type] || TYPES.help).icon, () => openQuest(q.id), stCls(q)));
+  st.requests.forEach(r => mk(r.x, r.y, 'mk_problem', () => {}, 's-open'));
 }
 function refreshStaticList() {
   // статистика + список рядом
   const open = st.quests.filter(q => q.status === 'active').length;
-  const doing = st.quests.filter(q => q.status === 'doing').length;
+  const doing = st.quests.filter(q => q.status === 'doing' || q.status === 'verify').length;
   const done = st.quests.filter(q => q.status === 'done').length;
   $('#stOpen').textContent = open;
   $('#stDoing').textContent = doing;
   $('#stDone').textContent = done;
+  const cats = $('#mapCats');
+  if (cats) {
+    cats.innerHTML = '';
+    Object.entries(TYPES).forEach(([k, t]) => {
+      const n = st.quests.filter(q => q.type === k && q.status !== 'done').length;
+      const d = el('button', 'cd');
+      d.appendChild(imgTag('assets/' + t.icon + '.png'));
+      d.appendChild(el('b', null, String(n)));
+      d.appendChild(el('span', null, t.n));
+      d.addEventListener('click', () => { qFilter = k; showScreen('scr-tasks'); });
+      cats.appendChild(d);
+    });
+  }
   const near = st.quests
     .filter(q => q.status !== 'done')
     .sort((a, b) => Math.hypot(a.x - CENTER[0], a.y - CENTER[1]) - Math.hypot(b.x - CENTER[0], b.y - CENTER[1]));
@@ -1386,9 +1531,11 @@ function questCard(q, arrow = true) {
   m.appendChild(el('span', 'qd', esc(q.desc)));
   const ch = el('span', 'qc');
   ch.appendChild(el('span', 'chip', t.n));
+  if (q.status === 'verify') ch.appendChild(el('span', 'chip orange', 'на проверке'));
   ch.appendChild(el('span', 'chip blue', '+' + q.xp + ' XP'));
   ch.appendChild(el('span', 'chip', '♥ +' + q.karma));
   if (q.budget) ch.appendChild(el('span', 'chip orange', fmtR(q.budget)));
+  if (q.reward) ch.appendChild(el('span', 'chip green', fmtR(q.reward) + ' ордер'));
   if (q.status === 'done') {
     ch.appendChild(el('span', 'chip green', 'решена'));
     if (q.takenBy === st.user.name) ch.appendChild(el('span', 'chip blue', 'твоя'));
@@ -1430,6 +1577,7 @@ function renderTasks() {
       m.appendChild(el('span', 'qt', esc(r.title)));
       const ch = el('span', 'qc');
       ch.appendChild(el('span', 'chip', t.n));
+  if (q.status === 'verify') ch.appendChild(el('span', 'chip orange', 'на проверке'));
       ch.appendChild(el('span', 'chip blue', '+' + r.xp + ' XP'));
       ch.appendChild(el('span', 'chip', '♥ +' + r.karma));
       ch.appendChild(el('span', 'chip orange', 'на модерации'));
@@ -1464,6 +1612,7 @@ function openQuest(id) {
   const ch = el('div', null, '');
   ch.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:11px';
   ch.appendChild(el('span', 'chip', t.n));
+  if (q.status === 'verify') ch.appendChild(el('span', 'chip orange', 'на проверке'));
   ch.appendChild(el('span', 'chip blue', '+' + q.xp + ' XP'));
   ch.appendChild(el('span', 'chip', '♥ +' + q.karma));
   d1.appendChild(ch);
@@ -1511,8 +1660,16 @@ function openQuest(id) {
   body.appendChild(stTile);
   // действия
   if (q.status === 'active') {
-    const b = el('button', 'bigbtn', 'Взять задачу');
+    const b = el('button', 'bigbtn', q.reward ? 'Взять ордер · ' + fmtR(q.reward) + ' ₽' : 'Взять задачу');
     b.addEventListener('click', () => {
+      if (q.reward) {
+        const cap = Math.max(200, Math.floor(st.fund.bank * 0.1));
+        if (q.reward > cap) { toast('Сейчас фонд готов гарантировать до ' + fmtR(cap) + ' ₽', ''); return; }
+        if (st.fund.bank < q.reward) { toast('В фонде нет средств под ордер', ''); return; }
+        st.fund.bank -= q.reward;
+        q.escrow = q.reward;
+        st.log.unshift({ s: 'Эскроу ордера: ' + fmtR(q.reward) + ' ₽ → ' + q.title, ts: Date.now() });
+      }
       q.status = 'doing'; q.takenBy = st.user.name;
       save(); refreshAll();
       toast('Задача взята', 'assets/ic_check.png');
@@ -1527,22 +1684,24 @@ function openQuest(id) {
     refuse.appendChild(el('span', 'tt', 'Отказаться от задачи'));
     refuse.appendChild(el('span', 'arr', '›'));
     refuse.addEventListener('click', () => {
+      if (q.escrow) { st.fund.bank += q.escrow; q.escrow = 0; }
       q.status = 'active'; q.takenBy = null;
       save(); refreshAll();
       closeSheet();
     });
     body.appendChild(refuse);
-    const b = el('button', 'bigbtn', 'Сдать работу');
+    const b = el('button', 'bigbtn', q.reward ? 'Сдать на проверку · выплата ' + fmtR(q.reward) + ' ₽' : 'Сдать работу');
     b.addEventListener('click', () => {
-      q.status = 'done';
-      st.user.stats.done++;
-      addWallet(q.reward);
-      addKarma(q.karma);
-      addXP(q.xp);
+      q.status = 'verify';
+      q.pay_to = st.user.ton || '';
+      q.pay_name = st.user.nick || st.user.name;
+      q.pay_tid = st.user.tid || null;
+      q.pay_ts = Date.now();
+      st.log.unshift({ s: 'Сдано на проверку: ' + q.title + (q.reward ? ' · ждёт выплату ' + fmtR(q.reward) + ' ₽' : ''), ts: Date.now() });
       save();
-      if (q.type === 'class') award('master', 'Мастер');
-      checkBadges();
-      toast('+' + q.xp + ' XP · +' + q.karma + ' кармы' + (q.reward ? ' · +' + q.reward + ' ₽' : ''), 'assets/success.gif');
+      toast(q.reward ? 'На проверке · GRAM придёт после подтверждения' : 'На проверке', 'assets/ic_check.png');
+      botNotify('🔍 НА ПРОВЕРКЕ: «' + q.title + '» от ' + (st.user.nick || st.user.name) +
+        (q.reward ? '\nК выплате: ' + q.reward + ' ₽' : '') + '\nпроверь и оплати — #pay=' + q.id);
       closeSheet();
       refreshAll();
     });
@@ -1556,7 +1715,7 @@ let repType = 'fix';
 function openReport() {
   repType = 'fix';
   const body = el('div');
-  body.appendChild(el('div', 'note', 'Что во дворе сломано, кому нужна помощь или что можно устроить. Заявку проверит админ района ' + ADMIN_TG + ' — после одобрения точка появится на карте, а тебе начислят +5 XP и +3 кармы.'));
+  body.appendChild(el('div', 'note', 'Что во дворе сломано, кому нужна помощь или что можно устроить. Заявку проверит модерация района — после одобрения точка появится на карте, а тебе начислят +5 XP и +3 кармы.'));
   const f1 = el('div', 'fld');
   f1.innerHTML = '<label>ЧТО СЛУЧИЛОСЬ</label>';
   const i1 = el('input'); i1.type = 'text'; i1.maxLength = 48; i1.placeholder = 'Коротко: что не так';
@@ -1627,7 +1786,7 @@ function openReport() {
     const r = {
       id: uid(), type: repType, title: title.slice(0, 48), desc: i2.value.trim().slice(0, 200),
       x: isFinite(lat) ? lat : CENTER[0], y: isFinite(lng) ? lng : CENTER[1],
-      photo: repPhoto, xp: 40, karma: 6,
+      photo: repPhoto, xp: 40, karma: 6, cost: orderPrice(repType, i2.value.trim()),
       author: st.user.name, mine: true, ts: Date.now(), status: 'mod',
     };
     st.requests.push(r);
@@ -1635,7 +1794,7 @@ function openReport() {
     save();
     closeSheet();
     refreshAll();
-    toast('Отправлено на модерацию', 'assets/ic_check.png');
+    toast('На модерации · примерный ордер ' + fmtR(r.cost) + ' ₽', 'assets/ic_check.png');
     botNotify(
       '📍 НОВАЯ ЗАЯВКА НА МОДЕРАЦИЮ\n' +
       'От: ' + (st.user.nick || st.user.name) + ' (' + st.user.name + ')\n' +
@@ -1647,7 +1806,7 @@ function openReport() {
     );
   });
   body.appendChild(b);
-  openSheet('assets/ic_plus.png', 'Сообщить о проблеме', body);
+  openSheet('assets/mk_problem.png', 'Сообщить о проблеме', body);
 }
 $('#mapReport').addEventListener('click', openReport);
 $('#taskReport').addEventListener('click', openReport);
@@ -1659,7 +1818,7 @@ async function openSticker(opts) {
   const body = el('div', 'sticker-box');
   const cv = el('canvas');
   cv.id = 'stickerC';
-  cv.width = 300; cv.height = 400;
+  cv.width = 300; cv.height = 300;
   cv.style.width = '280px';
   body.appendChild(cv);
   const isQuest = opts.kind === 'quest';
@@ -1674,39 +1833,20 @@ async function openSticker(opts) {
     title = st.user.name;
     meta = 'уровень ' + lvl() + ' · карма ' + st.user.karma + ' · ' + st.user.wallet + ' ₽';
   }
-  const urlRow = el('div', 'sticker-url', esc(payload));
-  body.appendChild(urlRow);
   const paint = async () => {
     const cx = cv.getContext('2d');
-    cx.imageSmoothingEnabled = false;
-    cx.clearRect(0, 0, 300, 400);
-    // фон + рамка
-    cx.fillStyle = '#fff'; cx.fillRect(0, 0, 300, 400);
+    // белый квадрат
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, 300, 300);
+    // чёрный QR на всю площадь
+    drawQR(cx, payload, 18, 18, 264);
+    // белый круг по центру
+    cx.beginPath(); cx.arc(150, 150, 46, 0, Math.PI * 2);
+    cx.fillStyle = '#fff'; cx.fill();
+    // чёрная «21» внутри круга
     cx.fillStyle = '#111';
-    cx.fillRect(0, 0, 300, 5); cx.fillRect(0, 395, 300, 5); cx.fillRect(0, 0, 5, 400); cx.fillRect(295, 0, 5, 400);
-    // лого 21
-    const logo = await loadImg('assets/logo.png');
-    cx.drawImage(logo, 18, 16, 44, 44);
-    cx.fillStyle = '#8e8e93';
-    cx.font = '700 13px -apple-system, Arial';
-    cx.fillText('ГОРОДСКАЯ ОС', 18, 78);
-    // QR
-    drawQR(cx, payload, 70, 100, 160);
-    // текст
-    cx.fillStyle = '#111';
-    cx.font = '800 19px -apple-system, Arial';
+    cx.font = '900 36px -apple-system, Arial';
     cx.textAlign = 'center';
-    const short = title.length > 26 ? title.slice(0, 25) + '…' : title;
-    cx.fillText(short, 150, 300);
-    cx.fillStyle = '#8e8e93';
-    cx.font = '600 13px -apple-system, Arial';
-    cx.fillText(meta, 150, 324);
-    // оранжевая полоса
-    cx.fillStyle = '#d4a373';
-    cx.fillRect(0, 352, 300, 43);
-    cx.fillStyle = '#fff';
-    cx.font = '800 15px -apple-system, Arial';
-    cx.fillText('СКАНИРУЙ · ВОЗЬМИ · СДЕЛАЙ', 150, 379);
+    cx.fillText('21', 150, 163);
     cx.textAlign = 'left';
   };
   paint();
@@ -1726,9 +1866,16 @@ async function openSticker(opts) {
   const t2 = el('button', 'tile');
   t2.innerHTML = '<span class="ti" style="background:var(--green)">↗</span>';
   t2.appendChild(el('span', 'tt', 'Поделиться ссылкой'));
-  t2.appendChild(el('span', 'ts', payload.length > 34 ? payload.slice(0, 33) + '…' : payload));
+  t2.appendChild(el('span', 'ts', 'deep link на район и профиль'));
   t2.appendChild(el('span', 'arr', '›'));
   t2.addEventListener('click', async () => {
+    const tw0 = window.__tg;
+    if (tw0 && tw0.openTelegramLink) {
+      try {
+        tw0.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(payload) + '&text=' + encodeURIComponent('21 — ' + title));
+        return;
+      } catch (e) {}
+    }
     try {
       if (navigator.share) await navigator.share({ title: '21 — ' + title, text: meta, url: payload });
       else { await navigator.clipboard.writeText(payload); toast('Ссылка скопирована'); }
@@ -1738,6 +1885,24 @@ async function openSticker(opts) {
     }
   });
   tiles.append(t1, t2);
+  const tw = window.__tg;
+  if (tw && tw.shareToMedia) {
+    const t3 = el('button', 'tile');
+    t3.innerHTML = '<span class="ti" style="background:var(--violet)">✈</span>';
+    t3.appendChild(el('span', 'tt', 'Отправить стикер в чат'));
+    t3.appendChild(el('span', 'ts', 'картинкой через Telegram'));
+    t3.appendChild(el('span', 'arr', '›'));
+    t3.addEventListener('click', () => {
+      try {
+        cv.toBlob(blob => {
+          if (!blob) { toast('Не удалось', ''); return; }
+          try { tw.shareToMedia(blob, { caption: '21 · СКАНИРУЙ · ВОЗЬМИ · СДЕЛАЙ' }); }
+          catch (e) { toast('Не удалось', ''); }
+        }, 'image/png');
+      } catch (e) { toast('Не удалось', ''); }
+    });
+    tiles.appendChild(t3);
+  }
   body.appendChild(tiles);
   const dl = el('button', 'bigbtn', 'Скачать PNG');
   dl.addEventListener('click', () => {
@@ -1759,22 +1924,11 @@ function renderFund() {
   const f = st.fund;
   $('#bankVal').textContent = fmtR(f.bank);
   $('#myContrib').textContent = fmtR(f.myContrib).replace(' ₽', '');
+  renderFundWallet();
   const pct = Math.min(100, Math.round(f.bank / f.goal * 100));
   $('#bankBar').style.width = pct + '%';
-  $('#bankSub').textContent = 'Цель квартала ' + fmtR(f.goal) + ' · собрано ' + pct + '%';
-  // последняя раздача
-  const ld = $('#lastDist');
-  if (f.lastDist && f.lastDist.items.length) {
-    ld.style.display = '';
-    const rows = $('#lastDistRows');
-    rows.innerHTML = '';
-    f.lastDist.items.forEach(it => {
-      const r = el('div', 'lrow');
-      r.appendChild(el('span', null, esc(it.t)));
-      r.appendChild(el('b', null, fmtR(it.a)));
-      rows.appendChild(r);
-    });
-  } else ld.style.display = 'none';
+  $('#bankSub').textContent = 'Цель квартала ' + fmtR(f.goal) + ' · собрано ' + pct + '%' +
+    (st.user && st.user.sector && st.user.sector !== 'двор' ? ' · твой донат — в сектор ' + st.user.sector : '');
   // проекты
   const box = $('#projList');
   box.innerHTML = '';
@@ -1821,111 +1975,66 @@ function renderFund() {
   });
 }
 $('#btnDeposit').addEventListener('click', () => {
-  const body = el('div');
-  body.appendChild(el('div', 'note', 'Вклад идёт в общий банк района. AI-раздача перераспределяет банк в проекты двора.'));
-  let amt = 100;
-  const chips = el('div', null, '');
-  chips.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px';
-  [100, 500, 1000, 2500].forEach(v => {
-    const b = el('button', 'tchip' + (v === amt ? ' on' : ''));
-    b.textContent = v + ' ₽';
-    b.addEventListener('click', () => {
-      amt = v;
-      chips.querySelectorAll('.tchip').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-    });
-    chips.appendChild(b);
-  });
-  body.appendChild(chips);
-  const b = el('button', 'bigbtn', 'Внести ' + fmtR(amt));
-  b.addEventListener('click', () => {
-    if (st.user.wallet < amt) { toast('Не хватает ₽ в кошельке', ''); return; }
-    st.user.wallet -= amt;
-    st.fund.bank += amt;
-    st.fund.myContrib += amt;
-    st.user.stats.donated += amt;
-    st.log.unshift({ s: 'Вклад в банк: +' + amt + ' ₽', ts: Date.now() });
-    st.log = st.log.slice(0, 30);
-    award('donor', 'Донор');
-    save();
-    toast('Внесено: ' + fmtR(amt), 'assets/ic_coin.png');
-    closeSheet();
-    refreshAll();
-    botNotify('💰 Вклад в банк: +' + amt + ' ₽ от ' + (st.user.nick || st.user.name));
-  });
-  body.appendChild(b);
-  openSheet('assets/ic_coin.png', 'Внести в фонд', body);
+  const tw0 = window.__tg;
+  const url = 'https://t.me/tribute/app?startapp=dLSm';
+  if (tw0 && tw0.openTelegramLink) { tw0.openTelegramLink(url); return; }
+  try { window.open(url, '_blank'); } catch (e) { toast('Открой из Telegram', ''); }
 });
-function aiPlan() {
-  const budget = Math.min(st.fund.bank, 6000);
-  const act = st.projects.filter(p => p.raised < p.goal);
-  if (budget < 100 || !act.length) return null;
-  const w = act.map(p => {
-    const deficit = p.goal - p.raised;
-    const weight = 2 * p.urg * (deficit / p.goal) * Math.sqrt(2000 / Math.max(deficit, 1));
-    return { id: p.id, t: p.title, deficit, weight };
-  });
-  const sum = w.reduce((a, x) => a + x.weight, 0);
-  const items = w.map(x => ({ ...x, a: Math.max(10, Math.round(budget * x.weight / sum / 10) * 10) }));
-  return { budget, items };
-}
-$('#btnAI').addEventListener('click', () => {
-  const plan = aiPlan();
-  if (!plan) { toast('AI: нечего распределять', ''); return; }
+$('#btnShare').addEventListener('click', () => {
   const body = el('div');
-  const head = el('div', 'card');
-  head.style.background = 'var(--blue-l)';
-  head.innerHTML =
-    '<div style="display:flex;gap:11px;align-items:center"><img src="assets/en_energy.png" style="width:38px;height:38px">' +
-    '<div><div style="font-weight:800;font-size:15.5px">Модель приоритета</div>' +
-    '<div style="color:var(--gray);font-size:13px;margin-top:2px">срочность × дефицит × близость к финишу</div></div></div>' +
-    '<div style="margin-top:9px;font-size:13.5px">Бюджет раунда: <b>' + fmtR(plan.budget) + '</b></div>';
-  body.appendChild(head);
-  plan.items.forEach(it => {
+  if (st.fund.bank < 50) {
+    body.appendChild(el('div', 'aminor', 'Фонд пока пуст — распределять есть чего после первых взносов.'));
+    openSheet('assets/ic_wallet.png', 'Распределить', body);
+    return;
+  }
+  body.appendChild(el('div', 'note', 'Ты сам выбираешь, на какую задачу направить средства фонда. Решение фиксируется в журнале.'));
+  const box = el('div');
+  const targets = [];
+  st.quests.filter(q => q.status !== 'done').forEach(q => targets.push({ k: 'q', id: q.id, t: q.title, sub: (TYPES[q.type] || TYPES.help).n + (q.reward ? ' · ордер ' + fmtR(q.reward) : ' · ордера пока нет') }));
+  st.projects.filter(pr => pr.raised < pr.goal).forEach(pr => targets.push({ k: 'p', id: pr.id, t: pr.title, sub: 'до цели ' + fmtR(pr.goal - pr.raised) }));
+  if (!targets.length) body.appendChild(el('div', 'aminor', 'Открытых задач сейчас нет.'));
+  targets.forEach(tg => {
+    const avail = st.fund.bank;
+    let amt = Math.min(500, avail);
     const c = el('div', 'card');
     c.style.marginBottom = '9px';
-    const t = el('div', null, '');
-    t.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-    t.appendChild(el('b', null, esc(it.t)));
-    t.appendChild(el('span', 'chip blue', fmtR(it.a)));
-    c.appendChild(t);
-    const bar = el('div', 'bar'); bar.style.margin = '10px 0 7px';
-    bar.style.background = '#dbe7f8';
-    const fl = el('i'); fl.style.width = Math.min(100, it.a / plan.budget * 100) + '%';
-    bar.appendChild(fl);
-    c.appendChild(bar);
-    c.appendChild(el('div', null, '<span style="font-size:12.5px;color:var(--gray)">дефицит ' + fmtR(it.deficit).replace(' ₽', '') + ' ₽ · вес ' + it.weight.toFixed(2) + '</span>'));
-    body.appendChild(c);
-  });
-  if (st.user.isDev) {
-    const b = el('button', 'bigbtn', 'Применить раздачу');
-    b.addEventListener('click', async () => {
-      const items = [];
-      let spent = 0;
-      plan.items.forEach(it => {
-        const p = st.projects.find(x => x.id === it.id);
-        if (!p) return;
-        const real = Math.min(it.a, p.goal - p.raised, st.fund.bank - spent);
-        if (real < 10) return;
-        p.raised += real;
-        st.fund.bank -= real;
-        spent += real;
-        items.push({ t: it.t, a: real });
-        st.log.unshift({ s: 'AI-раздача: ' + real + ' ₽ → ' + it.t, ts: Date.now() });
-      });
-      st.fund.lastDist = { items, ts: Date.now() };
+    const line = el('div');
+    line.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap';
+    const nm = el('div');
+    nm.innerHTML = '<div style="font-weight:800;font-size:14.5px">' + esc(tg.t) + '</div><div style="color:var(--gray);font-size:12.5px">' + esc(tg.sub) + '</div>';
+    line.appendChild(nm);
+    const chips = el('div');
+    chips.style.cssText = 'display:flex;gap:5px';
+    const btns = [];
+    [200, 500, 1000, Math.min(2000, avail)].filter((v, ix, a) => v <= avail && a.indexOf(v) === ix).forEach(v => {
+      const b = el('button', 'tchip' + (v === amt ? ' on' : ''));
+      b.textContent = v + ' ₽';
+      b.addEventListener('click', () => { amt = v; btns.forEach(x => x.classList.remove('on')); b.classList.add('on'); go.textContent = 'Выделить ' + fmtR(amt) + ' ₽'; });
+      chips.appendChild(b); btns.push(b);
+    });
+    line.appendChild(chips);
+    c.appendChild(line);
+    const go = el('button', 'bigbtn', 'Выделить ' + fmtR(amt) + ' ₽');
+    go.style.marginTop = '9px';
+    go.addEventListener('click', () => {
+      amt = Math.min(amt, st.fund.bank);
+      if (amt < 10) { toast('В фонде недостаточно средств', ''); return; }
+      st.fund.bank -= amt;
+      if (tg.k === 'q') { const q = st.quests.find(x => x.id === tg.id); if (q) q.reward = (q.reward || 0) + amt; }
+      else { const pr = st.projects.find(x => x.id === tg.id); if (pr) pr.raised = Math.min(pr.goal, pr.raised + amt); }
+      st.log.unshift({ s: 'Распределение: ' + fmtR(amt) + ' → ' + tg.t, ts: Date.now() });
       st.log = st.log.slice(0, 30);
       save();
-      toast('Бюджет распределён', 'assets/ic_coin.png');
+      toast('Выделено ' + fmtR(amt) + ' на «' + tg.t + '»', 'assets/ic_coin.png');
       closeSheet();
       refreshAll();
-      botNotify('⚡ AI-РАЗДАЧА (' + fmtR(spent) + ')\n' + items.map(i => '· ' + i.t + ': ' + i.a + ' ₽').join('\n'));
+      botNotify('💸 РАСПРЕДЕЛЕНИЕ ФОНДА\n' + fmtR(amt) + ' → ' + tg.t + ' · от ' + (st.user.nick || st.user.name));
     });
-    body.appendChild(b);
-  } else {
-    body.appendChild(el('div', 'aminor', 'Запустить раздачу может админ района'));
-  }
-  openSheet('assets/en_energy.png', 'AI-распределение', body);
+    c.appendChild(go);
+    box.appendChild(c);
+  });
+  body.appendChild(box);
+  openSheet('assets/ic_wallet.png', 'Распределить по мере необходимости', body);
 });
 $('#btnJournal').addEventListener('click', () => {
   const body = el('div');
@@ -2061,12 +2170,21 @@ const KB = [
     { t: 'Домофон 3-го', big: '3 дня', unit: 'без звонка с понедельника',
       bars: [['износ', 90]], act: '→ заявка на модерацию' },
   ]},
+  { id: 'clean', icon: 'qt_clean', title: 'уборка', cards: [
+    { t: 'Суботник подъезда', big: '2 часа', unit: 'каждую вторую субботу всем этажом',
+      bars: [['участники', 55], ['инвентарь', 70]], act: '→ взять задачу «Метла на этаж»' },
+    { t: 'Сортировка у станции', big: '4 ячейки', unit: 'пластик, стекло, бумага, общее',
+      bars: [['заполнение', 65]], act: '→ полный мешок — на станцию, не в общее' },
+    { t: 'Снег и наледь', big: '8 лопат', unit: 'дежурство по подъездам зимой',
+      bars: [['тропа', 40], ['песок', 60]], act: '→ очередь дежурства в журнале дома' },
+  ]},
 ];
 let kbOpen = 'water';
 function renderKB() {
   const tiles = $('#kbTiles');
   tiles.innerHTML = '';
   KB.forEach((s, i) => {
+    if (!st.kb.read[s.id]) st.kb.read[s.id] = [0, 0, 0];
     const opened = st.kb.read[s.id].filter(Boolean).length;
     const h = el('button', 'kbsec-h');
     const ki = el('span', 'ki'); ki.appendChild(imgTag('assets/' + s.icon + '.png'));
@@ -2155,52 +2273,21 @@ function renderMe() {
   $('#meName').textContent = u.name;
   $('#meNick').textContent = u.nick;
   $('#meNameInp').value = u.name;
-  // аватары
-  const ma = $('#meAvatar').getContext('2d');
-  drawAvatar(ma, u.avatar, 16, 32);
-  const ha = $('#hdrAvatar').getContext('2d');
-  drawAvatar(ha, u.avatar, 16, 32);
-  // голова
-  const hp = $('#headPick');
-  hp.innerHTML = '';
-  FACES.forEach((f, i) => {
-    const b = el('button', 'pick' + (u.avatar.head === i && !u.avatar.custom ? ' on' : ''));
-    const c = el('canvas'); c.width = 16; c.height = 16;
-    drawAvatar(c.getContext('2d'), { head: i, body: 0, tint: u.avatar.tint }, 16, 16);
-    b.appendChild(c);
-    b.addEventListener('click', () => {
-      u.avatar.head = i; u.avatar.custom = null;
-      $('#photoRm').style.display = 'none';
-      save(); refreshAll();
-    });
-    hp.appendChild(b);
-  });
-  // тело
-  const bp = $('#bodyPick');
-  bp.innerHTML = '';
-  BODIES.forEach((f, i) => {
-    const b = el('button', 'pick' + (u.avatar.body === i ? ' on' : ''));
-    b.appendChild(imgTag(f));
-    b.addEventListener('click', () => {
-      u.avatar.body = i;
-      save(); refreshAll();
-    });
-    bp.appendChild(b);
-  });
-  // цвет
-  const tp = $('#tintPick');
-  tp.innerHTML = '';
-  TINTS.forEach(t => {
-    const b = el('button', 'sw' + (u.avatar.tint === t ? ' on' : ''));
-    b.style.setProperty('--c', t);
-    b.addEventListener('click', () => {
-      u.avatar.tint = t;
-      save(); refreshAll();
-    });
-    tp.appendChild(b);
-  });
-  // фото
+  u.avatar = u.avatar || {};
+  // аватар: своё фото или лого 21
+  $('#meAvaImg').src = u.avatar.custom ? u.avatar.custom : 'assets/logo.png';
+  $('#meNickInp').value = (u.nick || '').replace(/^@+/, '');
+  $('#tonInp').value = u.ton || '';
   $('#photoRm').style.display = u.avatar.custom ? '' : 'none';
+  // сектор района: донаты идут в обеспечение своей части района
+  const sp = $('#sectorPick');
+  sp.innerHTML = '';
+  ['двор'].concat(Array.from({ length: 19 }, (_, i) => (i + 1) + '-й')).forEach(v => {
+    const b = el('button', 'fchip' + (String(u.sector || 'двор') === v ? ' on' : ''));
+    b.appendChild(el('span', null, v));
+    b.addEventListener('click', () => { u.sector = v; save(); renderMe(); });
+    sp.appendChild(b);
+  });
   // статистика
   $('#sgLvl').textContent = lvl();
   $('#sgXp').textContent = u.xp;
@@ -2229,7 +2316,7 @@ function renderMe() {
     const r = el('button', 'lrow');
     const li = el('span', 'li');
     li.style.background = bg2;
-    li.appendChild(imgTag('assets/' + icon + '.png'));
+    li.appendChild(imgTag(assetPath(icon)));
     r.appendChild(li);
     const tx = el('span', 'lt');
     tx.innerHTML = title + '<div class="ls">' + sub + '</div>';
@@ -2253,13 +2340,36 @@ $('#meNameInp').addEventListener('change', e => {
   st.user.name = (e.target.value || st.user.name).slice(0, 18);
   save(); refreshAll();
 });
+$('#tonInp').addEventListener('change', e => {
+  const raw = (e.target.value || '').trim();
+  if (!raw) { st.user.ton = ''; save(); toast('Кошелёк не указан', ''); return; }
+  const okAddr = /^(UQ|EQ)[-A-Za-z0-9_]{46,50}$/.test(raw);
+  const m = raw.match(/^@?([A-Za-z0-9_]{4,32})$/);
+  if (okAddr) st.user.ton = raw;
+  else if (m) st.user.ton = m[1].toLowerCase() + '.ton';
+  else { toast('Не похоже на TON-адрес или @ник', ''); e.target.value = st.user.ton || ''; return; }
+  save();
+  toast('Кошелёк сохранён', 'assets/ic_wallet.png');
+});
+$('#meNickInp').addEventListener('change', e => {
+  const v = (e.target.value || '').trim().replace(/^@+/, '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 18);
+  st.user.nick = v ? '@' + v : st.user.nick;
+  save(); refreshAll();
+});
 $('#photoInp').addEventListener('change', async e => {
   const f = e.target.files[0];
   if (!f) return;
   try {
-    st.user.avatar.custom = await pixelateFile(f, 16);
+    st.user.avatar = st.user.avatar || {};
+    const url = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(f); });
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const c = document.createElement('canvas'); const S = 256; c.width = S; c.height = S;
+    const cx = c.getContext('2d');
+    const d = Math.min(img.width, img.height) || 1;
+    cx.drawImage(img, (img.width - d) / 2, (img.height - d) / 2, d, d, 0, 0, S, S);
+    st.user.avatar.custom = c.toDataURL('image/jpeg', 0.82);
     save();
-    toast('Фото — теперь пиксель-арт', 'assets/ic_char.png');
+    toast('Фото профиля обновлено', 'assets/ic_char.png');
     refreshAll();
   } catch (err) { toast('Не удалось', ''); }
 });
@@ -2275,13 +2385,13 @@ $('#tileHow').addEventListener('click', () => {
   $('#app').style.display = 'none';
 });
 $('#tileRules').addEventListener('click', () => {
-  openSheet('assets/dd_cat.png', 'Правила суда',
+  openSheet('assets/ic_court.png', 'Правила важного',
     '<div class="note">Голос весит по карме: 1 голос + карма/50. Решение проходит при кворуме 12 голосов.</div>' +
     '<div class="card"><div style="font-size:14.5px;line-height:1.6">' +
     '1. Голосовать можно один раз по делу — но до кворума можно передумать.<br><br>' +
     '2. Кворум 12 голосов — решение фиксируется и уходит в ленту.<br><br>' +
-    '3. За первое участие в суде — +5 XP.<br><br>' +
-    '4. Спорные деньги фонда решает суд, а не старший по корпусу.' +
+    '3. За первое участие в голосовании — +5 XP.<br><br>' +
+    '4. Спорные деньги фонда решает общий сбор мнений, а не старший по корпусу.' +
     '</div></div>' +
     '<div class="aminor">Кворум достигается редко — голосуй осмысленно</div>');
 });
@@ -2292,7 +2402,142 @@ $('#tileQR').addEventListener('click', () => openSticker({ kind: 'me' }));
    ================================================================ */
 let aType = 'fix';
 let postPhoto = null;
+/* GRAM-выплаты: курс, интеграция с TG-кошельком через ton://, подтверждение модератором */
+window.__gramRub = window.__gramRub || 0;
+async function gramRate() {
+  try {
+    const r = await apiFetch('/api/rate');
+    if (r.ok) { const j = await r.json(); if (j && j.ok && j.gram_rub > 0) window.__gramRub = j.gram_rub; }
+  } catch (e) {}
+  renderPayouts();
+  renderFundWallet();
+}
+function apiFetch(u, o) { return (typeof fetch === 'function') ? fetch(u, o) : Promise.reject(new Error('no fetch')); }
+function gramOf(rub) { return window.__gramRub > 0 ? (rub / window.__gramRub).toFixed(2) + ' GRAM' : '— GRAM'; }
+function tonLink(to, grams, note) {
+  return 'ton://transfer/' + encodeURIComponent(to) + '?amount=' + grams + '&text=' + encodeURIComponent(note || '21 · ордер');
+}
+function renderPayouts() {
+  const lb = $('#payLabel'), box = $('#payList');
+  if (!lb || !box) return;
+  const rows = st.quests.filter(q => q.status === 'verify');
+  lb.textContent = 'ОЖИДАЮТ ПОДТВЕРЖДЕНИЯ · ' + rows.length;
+  box.innerHTML = '';
+  if (!rows.length) { box.appendChild(el('div', 'aminor', 'Пусто — все расчёты закрыты.')); return; }
+  rows.forEach(q => {
+    const r = el('div', 'payrow');
+    const m = el('div', 'pr-m');
+    m.appendChild(el('div', 'pr-t', esc(q.title)));
+    m.appendChild(el('div', 'pr-s', esc(q.pay_name || q.takenBy || 'исполнитель') + (q.pay_to ? ' · ' + q.pay_to : ' · кошелёк не указан')));
+    r.appendChild(m);
+    const rr = el('div', 'pr-r');
+    rr.appendChild(el('div', 'pr-sum', fmtR(q.reward || 0) + ' ₽'));
+    if (q.reward && q.pay_to) {
+      const bl = el('button', 'pb link', '↗ Перевести GRAM');
+      bl.addEventListener('click', () => {
+        const g = gramOf(q.reward).split(' ')[0];
+        try { window.open(tonLink(q.pay_to, (g === '—' ? '1' : g), '21 · ' + q.title), '_blank'); } catch (e) {}
+        apiFetch('/api/payout', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: q.pay_to, amount_rub: q.reward, note: '21 · ' + q.title, tid: q.pay_tid }) })
+          .then(x => x.json()).then(j => {
+            if (j && j.ok && j.sent) finalizePayout(q, true);
+          }).catch(() => {});
+        payConfirmRow(q, rr);
+      });
+      rr.appendChild(bl);
+    } else if (q.reward) {
+      rr.appendChild(el('div', 'pr-s', 'нет кошелька — зачтём внутри 21'));
+    }
+    const bk = el('button', 'pb ok', q.reward ? '✓ Выплачено' : '✓ Подтвердить');
+    bk.addEventListener('click', () => finalizePayout(q, true));
+    rr.appendChild(bk);
+    const bx = el('button', 'pb no', '✕ Вернуть');
+    bx.addEventListener('click', () => {
+      if (q.escrow) { st.fund.bank += q.escrow; q.escrow = 0; }
+      q.status = 'doing';
+      st.log.unshift({ s: 'Возврат на доработку: ' + q.title + ' · эскроу вернулся в фонд', ts: Date.now() });
+      save(); refreshAll(); renderPayouts();
+      botNotify('↩ ВОЗВРАТ НА ДОРАБОТКУ: «' + q.title + '»');
+    });
+    rr.appendChild(bx);
+    r.appendChild(rr);
+    box.appendChild(r);
+  });
+}
+function payConfirmRow(q, rr) {
+  const bw = el('button', 'pb ok', '✓ Отправлено — закрыть');
+  bw.addEventListener('click', () => finalizePayout(q, true));
+  rr.appendChild(bw);
+}
+function finalizePayout(q, paid) {
+  const amt = q.reward || 0;
+  q.escrow = 0;
+  q.status = 'done';
+  st.user.stats.done++;
+  if (amt) {
+    addWallet(amt);
+    st.log.unshift({ s: 'Выплата за «' + q.title + '»: +' + fmtR(amt) + ' ₽ (' + gramOf(amt) + ')' + (paid ? ' · GRAM отправлен' : ''), ts: Date.now() });
+    st.payouts = st.payouts || [];
+    st.payouts.unshift({ t: q.title, rub: amt, to: q.pay_to || '', gram: gramOf(amt), ts: Date.now(), mode: paid ? 'gram' : 'in-app' });
+    st.payouts = st.payouts.slice(0, 25);
+  } else {
+    st.log.unshift({ s: 'Работа принята: ' + q.title, ts: Date.now() });
+  }
+  addKarma(q.karma || 0);
+  addXP(q.xp || 0);
+  if (q.type === 'class') award('master', 'Мастер');
+  checkBadges();
+  save();
+  toast((amt ? fmtR(amt) + ' ₽ · ' : '') + '+' + (q.xp || 0) + ' XP · +' + (q.karma || 0) + ' кармы', 'assets/success.gif');
+  refreshAll();
+  renderPayouts();
+  botNotify('💸 ВЫПЛАТА ПОДТВЕРЖДЕНА: «' + q.title + '» — ' + fmtR(amt) + ' ₽ ≈ ' + gramOf(amt) +
+    (q.pay_to ? ' → ' + q.pay_to : ' · зачислено на кошелёк 21'));
+}
+function renderFundWallet() {
+  const b = $('#payWallet');
+  if (!b) return;
+  b.innerHTML = '';
+  b.appendChild(el('div', null, 'Кошелёк выплат · GRAM')).style.fontWeight = '800';
+  b.appendChild(el('div', 'aminor', window.__gramRub > 0
+    ? 'Курс: 1 GRAM ≈ ' + fmtR(Math.round(window.__gramRub)) + ' ₽ · выплата после подтверждения модератором'
+    : 'Выплаты — после подтверждения модератором · пополнение через общий сбор'));
+  apiFetch('/api/wallet').then(x => x.ok ? x.json() : Promise.reject()).then(j => {
+    if (!j || !j.ok || !j.address) return;
+    const l1 = el('div', 'pw-line');
+    l1.appendChild(el('code', null, j.address));
+    const cp = el('button', 'pb no', 'копировать');
+    cp.style.cssText = 'border:none;border-radius:10px;padding:7px 10px;font-weight:700;cursor:pointer;background:#eef0f3';
+    cp.addEventListener('click', () => { try { navigator.clipboard.writeText(j.address); toast('Скопировано'); } catch (e) {} });
+    l1.appendChild(cp);
+    b.appendChild(l1);
+    const l2 = el('div', 'pw-line');
+    l2.appendChild(el('span', 'aminor', (j.balance ? 'баланс ' + j.balance + ' GRAM · ' : '') + 'пополнить напрямую'));
+    const tr = document.createElement('a');
+    tr.className = 'pb link';
+    tr.textContent = 'отправить';
+    tr.href = tonLink(j.address, '10', '21 · пополнение фонда выплат');
+    tr.style.cssText = 'text-decoration:none;border-radius:10px;padding:7px 11px;font-weight:800;background:var(--green);color:#fff';
+    l2.appendChild(tr);
+    b.appendChild(l2);
+  }).catch(() => {
+    const l = el('div', 'pw-line');
+    l.appendChild(el('span', 'aminor', 'напрямую ещё не настроено · доступно через общий сбор'));
+    const tb = el('button', 'pb link', 'Tribute');
+    tb.style.cssText = 'border:none;border-radius:10px;padding:7px 11px;font-weight:800;cursor:pointer;background:var(--blue);color:#fff';
+    tb.addEventListener('click', () => {
+      const tw0 = window.__tg;
+      const url = 'https://t.me/tribute/app?startapp=dLSm';
+      if (tw0 && tw0.openTelegramLink) tw0.openTelegramLink(url);
+      else try { window.open(url, '_blank'); } catch (e) {}
+    });
+    l.appendChild(tb);
+    b.appendChild(l);
+  });
+}
 function renderAdmin() {
+  renderPayouts();
+  if (!window.__gramRub) gramRate();
   // модерация
   const pending = st.requests.filter(r => r.status === 'mod');
   const mb = $('#modBlock');
@@ -2312,11 +2557,11 @@ function renderAdmin() {
         st.requests = st.requests.filter(x => x.id !== r.id);
         st.quests.push({
           id: uid(), type: r.type, title: r.title, desc: r.desc || r.title,
-          x: r.x, y: r.y, xp: r.xp, karma: r.karma, budget: 0, reward: 0,
+          x: r.x, y: r.y, xp: r.xp, karma: r.karma, budget: 0, reward: r.cost || orderPrice(r.type, r.desc),
           author: r.author, status: 'active', takenBy: null, photo: r.photo,
         });
         save();
-        toast('Заявка одобрена — точка на карте', 'assets/ic_check.png');
+        toast('Одобрено · ордер ' + fmtR(r.cost || orderPrice(r.type, r.desc)) + ' на карте', 'assets/ic_check.png');
         refreshAll();
         botNotify('✅ ЗАЯВКА ОДОБРЕНА → точка на карте\n' + r.title + ' (' + r.x.toFixed(4) + ', ' + r.y.toFixed(4) + ') от ' + r.author);
       });
@@ -2429,7 +2674,7 @@ $('#apCaseAdd').addEventListener('click', () => {
   st.cases.push({ id: uid(), title: title.slice(0, 48), desc: $('#apCaseDesc').value.trim().slice(0, 160), opts, my: null, days: parseInt($('#apCaseDays').value, 10) || 3 });
   $('#apCaseTitle').value = ''; $('#apCaseDesc').value = '';
   save();
-  toast('Дело в суде', 'assets/ic_court.png');
+  toast('Вопрос на голосовании', 'assets/ic_court.png');
   refreshAll();
   botNotify('⚖️ АДМИН: новое дело\n' + title + '\nварианты: ' + opts.map(o => o.label).join(' / '));
 });
@@ -2456,13 +2701,22 @@ function clamp2(v, a, b) { return Math.max(a, Math.min(b, v)); }
    ================================================================ */
 function renderHeader() {
   const u = st.user;
-  $('#hdrName').textContent = u.name;
-  $('#hdrLvl').textContent = 'Уровень ' + lvl() + ' · ' + lvlProg() + '/' + LEVEL_XP + ' XP';
-  $('#hdrBar').style.width = (lvlProg() / LEVEL_XP * 100) + '%';
   $('#hdrKarma').textContent = u.karma;
   $('#hdrWallet').textContent = u.wallet.toLocaleString('ru-RU');
-  drawAvatar($('#hdrAvatar').getContext('2d'), u.avatar, 16, 32);
+  renderMembers();
 }
+/* живой счётчик участников: GET /api/stats (значения отдаёт сервер приложения) */
+async function statsFetch() {
+  try {
+    const r = await apiFetch('/api/stats');
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j && j.ok && j.count > 0 && j.count !== st.community) { st.community = j.count; save(); renderMembers(); }
+  } catch (e) {}
+}
+function renderMembers() { const m = $('#hdrMembers'); if (m) m.textContent = st.community ? String(st.community) : '…'; }
+let __statsTimer = null;
+function startMembersPoll() { statsFetch(); if (!__statsTimer) __statsTimer = setInterval(statsFetch, 60000); }
 function refreshAll() {
   if (!st.user) return;
   save();
@@ -2506,7 +2760,7 @@ function renderOnb() {
       const s = el('div', 'onb-step');
       const oi = el('span', 'oi');
       oi.style.background = bg;
-      oi.appendChild(imgTag('assets/' + icon + '.png'));
+      oi.appendChild(imgTag(assetPath(icon)));
       s.appendChild(oi);
       const tx = el('div');
       tx.appendChild(el('b', null, t));
@@ -2517,14 +2771,13 @@ function renderOnb() {
     mk('var(--green)', 'ic_plus.png', 'Замечаешь проблему', 'фото + точка на карте, дальше модерация');
     mk('var(--blue)', 'ic_check.png', 'Берёшь задачу', 'сделал — XP, карма и ₽ в кошелёк');
     mk('var(--orange)', 'ic_coin.png', 'Фонд', '₽ уходят в проекты двора');
-    mk('var(--red)', 'ic_court.png', 'Суд соседей', 'спорное решает голосование');
+    mk('var(--red)', 'ic_court.png', 'Важное', 'спорное решает общий голос');
     box.appendChild(steps);
   } else {
-    const cv = el('canvas');
-    cv.width = 16; cv.height = 32;
-    cv.style.cssText = 'width:96px;height:192px;background:#f2f3f5;border-radius:18px';
-    drawAvatar(cv.getContext('2d'), st.user.avatar, 16, 32);
-    box.appendChild(cv);
+    const im = el('img');
+    im.src = (st.user.avatar && st.user.avatar.custom) ? st.user.avatar.custom : 'assets/logo.png';
+    im.style.cssText = 'width:96px;height:96px;border-radius:26px;object-fit:cover;background:#f2f3f5';
+    box.appendChild(im);
     box.appendChild(el('h2', null, 'Привет, ' + st.user.name));
     box.appendChild(el('p', null, 'Имя и аватар взяты из Telegram — поменять можно в профиле.'));
   }
@@ -2537,6 +2790,7 @@ $('#onbNext').addEventListener('click', () => {
   enterApp();
 });
 function enterApp() {
+  startMembersPoll();
   $('#gate').style.display = 'none';
   $('#onb').style.display = 'none';
   $('#app').style.display = 'flex';
@@ -2550,9 +2804,15 @@ function tryDeepLink() {
   const mQ = h.match(/#q=(\w+)/);
   const mU = h.match(/#u=(\w+)/);
   const mA = h.match(/#a/);
+  const mPay = h.match(/#pay=(\w+)/);
   setTimeout(() => {
     if (mQ) openQuest(mQ[1]);
     else if (mU) openSticker({ kind: 'me' });
+    else if (mPay && st.user && st.user.isDev) {
+      showScreen('scr-admin');
+      const tb = document.querySelector('.atab[data-apt="payout"]');
+      if (tb) tb.click();
+    }
     else if (mA && st.user.isDev) showScreen('scr-admin');
   }, 400);
 }
@@ -2562,6 +2822,8 @@ function doLogin(tu) {
     id: tu ? 'tg' + tu.id : 'dev' + Date.now().toString(36),
     name: (name || 'Сосед').slice(0, 18),
     nick: tu ? ('@' + (tu.username || 'user')) : '@devuser',
+    tid: tu && tu.id ? tu.id : null,
+    ton: '',
     isDev: !tu,
     avatar: { head: 0, body: 0, tint: '#999999', custom: null },
     xp: 0, karma: 12, wallet: 500,
@@ -2603,12 +2865,13 @@ function startFlow() {
   if (tu) { doLogin(tu); return; }
   // gate
   const gs = $('#gateStatus');
-  if (window.Telegram && window.Telegram.WebApp && !tu) {
-    gs.textContent = 'Откройте приложение из кнопки бота';
-  } else {
-    gs.textContent = 'Bot domain invalid';
-    gs.classList.add('err');
-  }
+  gs.textContent = 'Откройте «21» в Telegram: меню диалога → кнопка приложения';
+  gs.classList.add('err');
+  const insideTg = !!window.__tg;
+  const host = location.hostname || '';
+  const devHost = host === 'localhost' || /^[\d.]+$/.test(host)
+    || /\.e2b\.app$/.test(host) || /[?&]dev=1/.test(location.search);
+  if (devHost) $('#btnDevLogin').style.display = '';
   $('#gate').style.display = 'flex';
 }
 /* boot */
@@ -2628,6 +2891,12 @@ function startFlow() {
   }, 55);
   $('#boot').addEventListener('click', skip, { once: true });
 })();
+
+/* ---------- Telegram: тактильность нажатий ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.btn,.bigbtn,.tile,.qcard,.lrow,.fchip,.tchip,.card-cta,.tile3');
+  if (b) tgHaptic(b.classList.contains('fchip') || b.classList.contains('tchip') ? 'selection' : 'medium');
+}, true);
 
 /* service worker */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

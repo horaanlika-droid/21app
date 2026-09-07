@@ -1,0 +1,166 @@
+{
+ "logo.png": {
+  "tile": "ducko_mascot",
+  "size": 256
+ },
+ "favicon.png": {
+  "tile": "ducko_mascot",
+  "size": 64
+ },
+ "ic_coin.png": {
+  "tile": "gift_coin",
+  "size": 96
+ },
+ "ic_wallet.png": {
+  "tile": "gift_coin",
+  "size": 96
+ },
+ "ic_heart.png": {
+  "tile": "flag_ducks",
+  "size": 96
+ },
+ "ic_quest.png": {
+  "tile": "ducko_water_phone",
+  "size": 96
+ },
+ "ic_work.png": {
+  "tile": "ducko_shovel_a",
+  "size": 96
+ },
+ "ic_check.png": {
+  "tile": "ballot_box",
+  "size": 96
+ },
+ "ic_lvl.png": {
+  "tile": "milestone_calendar",
+  "size": 96
+ },
+ "ic_xp.png": {
+  "tile": "data_cube",
+  "size": 96
+ },
+ "ic_char.png": {
+  "tile": "ducko_tech",
+  "size": 96
+ },
+ "ic_book.png": {
+  "tile": "docs_folder",
+  "size": 96
+ },
+ "ic_journal.png": {
+  "tile": "blueprints_doc",
+  "size": 96
+ },
+ "ic_feed.png": {
+  "tile": "chat_phone",
+  "size": 96
+ },
+ "ic_map.png": {
+  "tile": "venus_building",
+  "size": 96
+ },
+ "ic_court.png": {
+  "tile": "ballot_box",
+  "size": 96
+ },
+ "ic_admin.png": {
+  "tile": "ducko_project_leader",
+  "size": 96
+ },
+ "ic_plus.png": {
+  "tile": "robot_arm",
+  "size": 96
+ },
+ "ic_ai.png": {
+  "tile": "ai_analyst_duck",
+  "size": 96
+ },
+ "qt_fix.png": {
+  "tile": "toolshed",
+  "size": 128
+ },
+ "qt_help.png": {
+  "tile": "ducko_community",
+  "size": 128
+ },
+ "qt_swap.png": {
+  "tile": "exchange_box",
+  "size": 128
+ },
+ "qt_class.png": {
+  "tile": "chalkboard_class",
+  "size": 128
+ },
+ "qt_clean.png": {
+  "tile": "broom",
+  "size": 128
+ },
+ "en_water.png": {
+  "tile": "water_filter",
+  "size": 128
+ },
+ "en_energy.png": {
+  "tile": "solar_panel",
+  "size": 128
+ },
+ "en_food.png": {
+  "tile": "greenhouse_rack",
+  "size": 128
+ },
+ "en_repair.png": {
+  "tile": "hardware_pcb",
+  "size": 128
+ },
+ "mk_quest.png": {
+  "tile": "ducko_shovel_b",
+  "size": 96
+ },
+ "mk_problem.png": {
+  "tile": "dustpan",
+  "size": 96
+ },
+ "mk_done.png": {
+  "tile": "waste_unit",
+  "size": 96
+ },
+ "bd_first.png": {
+  "tile": "ducko_blueprints",
+  "size": 128
+ },
+ "bd_five.png": {
+  "tile": "ducko_shovel_c",
+  "size": 128
+ },
+ "bd_karma.png": {
+  "tile": "ducko_pitchfork",
+  "size": 128
+ },
+ "bd_lvl3.png": {
+  "tile": "ai_crystal",
+  "size": 128
+ },
+ "bd_donor.png": {
+  "tile": "ducko_filter_mgr",
+  "size": 128
+ },
+ "bd_judge.png": {
+  "tile": "ballot_box",
+  "size": 128
+ },
+ "bd_editor.png": {
+  "tile": "p2p_phone",
+  "size": 128
+ },
+ "bd_master.png": {
+  "tile": "makerspace_station",
+  "size": 128
+ },
+ "ic_qr.png": {
+  "tile": "p2p_phone",
+  "size": 96
+ },
+ "ic_power.png": {
+  "tile": "thorium_reactor",
+  "size": 96
+ }
+}
