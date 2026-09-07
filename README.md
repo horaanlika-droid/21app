@@ -6,9 +6,16 @@
 ## Запуск
 
 ```bash
+# любой статический сервер
 python3 -m http.server 8080
+# или точка входа для node-хостинга (без зависимостей, порт — env PORT, по умолчанию 8080)
+node http-wrapper.js
 # → http://localhost:8080  (кнопка «Войти как разработчик» — полный проход без Telegram)
 ```
+
+`http-wrapper.js` — минимальный статический сервер (node:http, без npm-зависимостей):
+MIME-типы, `Cache-Control` для assets, SPA-фолбэк, защита от path traversal.
+`sw.js` безопасен под Node (guard: исполняется только в worker-контексте).
 
 GitHub Pages: включить на репозитории из корня. Для входа через Telegram домен нужно
 привязать к боту через **@BotFather → /setdomain** (иначе на гейте «Bot domain invalid»).
@@ -19,7 +26,8 @@ GitHub Pages: включить на репозитории из корня. Дл
 |---|---|
 | `index.html` | Всё приложение: CSS + JS внутри (единый файл) |
 | `assets/` | PNG/GIF пиксель-заглушки (имена стабильны — заменяются без правки кода) |
-| `sw.js` | Service worker: офлайн-кэш, автообновление |
+| `http-wrapper.js` | Точка входа для node-хостинга: `node http-wrapper.js` (PORT из env) |
+| `sw.js` | Service worker: офлайн-кэш, автообновление (guard под Node) |
 | `manifest.webmanifest` | PWA-манифест (белая тема) |
 | `tools/qr.js` | QR-кодер (byte mode, EC L, v1–5) — вшит в `index.html` между `/*QR:BEGIN*/…/*QR:END*/` |
 | `tools/gen_assets.py` | Генератор пиксель-арт заглушек: `python3 tools/gen_assets.py` |
