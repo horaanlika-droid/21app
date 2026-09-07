@@ -75,7 +75,7 @@ async function handleBotApi(req, res, method) {
   }
 }
 
-const PUBLIC_FILE = /^\/(index\.html|sw\.js|manifest\.webmanifest|favicon\.ico)$/;
+const PUBLIC_FILE = /^\/(index\.html|sw\.js|manifest\.webmanifest|tonconnect-manifest\.json|favicon\.ico)$/;
 const ASSET_FILE = /^\/assets\/[A-Za-z0-9_\/. -]+\.(png|jpe?g|gif|svg|webp|css|js|json|woff2)$/;
 
 let __rateCache = { v: 0, ts: 0 };
@@ -183,17 +183,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // TON Connect: манифест генерим под фактический origin хоста (localhost / превью / прод),
+  // чтобы кошелёк не отбраковал заявку из-за несовпадения домена.
   if (urlPath === '/tonconnect-manifest.json') {
     const host = req.headers.host || ('localhost:' + PORT);
-    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const proto = req.headers['x-forwarded-proto']
+      || (/^localhost|^127\.|^0\.0\.0\.0|^\[::1\]/.test(host) ? 'http' : 'https');
     const origin = proto + '://' + host;
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store',
+    });
     res.end(JSON.stringify({
       name: '21 · районная сеть',
       description: 'Карта дел, задачи во дворе, общий фонд и суд соседей.',
       url: origin,
       iconUrl: origin + '/assets/logo.png',
-      version: '1',
+      termsOfUseUrl: origin + '/',
+      privacyPolicyUrl: origin + '/',
     }));
     return;
   }

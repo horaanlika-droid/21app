@@ -29,6 +29,8 @@ GitHub Pages: включить на репозитории из корня. Дл
 | `http-wrapper.js` | Точка входа для node-хостинга: `node http-wrapper.js` (PORT из env) |
 | `sw.js` | Service worker: офлайн-кэш, автообновление (guard под Node) |
 | `manifest.webmanifest` | PWA-манифест (белая тема) |
+| `tonconnect-manifest.json` | Манифест TON Connect (статика для GitHub Pages; node-хост отдаёт свой, под фактический origin) |
+| `assets/vendor/tonconnect-ui.min.js` | TON Connect UI SDK (вендорится локально, без CDN) |
 | `tools/qr.js` | QR-кодер (byte mode, EC L, v1–5) — вшит в `index.html` между `/*QR:BEGIN*/…/*QR:END*/` |
 | `tools/gen_assets.py` | Генератор пиксель-арт заглушек: `python3 tools/gen_assets.py` |
 
@@ -98,6 +100,26 @@ TELEGRAM_BOT_TOKEN='123:ABC...' PORT=8080 node http-wrapper.js
 «первого .js» в корне добавлен шим `index.js` (он просто требует `http-wrapper.js`), а
 `config.example` намеренно лежит как `.txt`. Корневые `.js`: `index.js`, `http-wrapper.js`,
 `sw.js` — все безопасны как точка входа.
+
+## Кошелёк · TON Connect
+
+Подключение кошелька — SDK `assets/vendor/tonconnect-ui.min.js` (локально, без CDN),
+точка входа в UI: **Профиль → «👛 Подключить кошелёк · TON Connect»**.
+
+- Подключение открывает модалку выбора кошелька (`openModal()`) и ждёт `onStatusChange`;
+  адрес сохраняется в `st.user.ton` в user-friendly виде (`UQ…`), сырой — в `st.user.tonRaw`,
+  сеть — в `tonChain` (`-239` mainnet / `-3` testnet), имя кошелька — в `tonWallet`.
+- Пока адрес получен из кошелька, поле ввода только для чтения; правка руками — после «отключить».
+- Сессия восстанавливается при следующем открытии (`connectionRestored`), повторно логиниться не нужно.
+- Переводы (`Фонд → Внести`, TON-депозит кошелька выплат) идут через `sendTransaction`;
+  `validUntil` — UNIX-время **в секундах** (мс кошельки отвергают как просроченную транзакцию).
+- Если SDK не загрузился — фолбэк: адрес фонда с кнопкой «копировать» и ручной перевод.
+
+**Манифест.** Кошельки требуют публичный `tonconnect-manifest.json`, домен в нём должен совпадать
+с доменом приложения. Клиент берёт манифест рядом с `index.html` (работает и в корне, и на подпути
+GitHub Pages `/21app/`); переопределить можно через `window.OS21_TON_MANIFEST` в `config.js`.
+`http-wrapper.js` генерирует манифест на лету под фактический `Host`, статический
+`tonconnect-manifest.json` в корне нужен для GitHub Pages — **укажите там свой домен**, если форкаете.
 
 ## Данные
 

@@ -1,6 +1,6 @@
 /* Service worker. В Node-окружении (node sw.js) — no-op: исполняется только в worker-контексте. */
 if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') {
-const CACHE='21-v43';
+const CACHE='21-v44';
 const CORE=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})));self.skipWaiting();});
 self.addEventListener('activate',e=>{

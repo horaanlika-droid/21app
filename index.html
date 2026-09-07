@@ -714,7 +714,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
       <div class="card" style="padding:10px 12px">
         <input id="tonInp" type="text" placeholder="UQ…-адрес или @ник (ник.ton)" style="width:100%;background:#eef0f3;border:none;border-radius:11px;padding:11px 14px;font-size:14px;font-weight:600;text-align:center">
         <button id="tonConnectBtn" class="pb link" style="margin-top:8px;width:100%;justify-content:center;padding:10px 12px;font-weight:800;background:var(--blue);color:#fff;border:none;border-radius:11px;cursor:pointer">👛 Подключить кошелёк · TON Connect</button>
-        <div class="aminor" style="margin-top:7px">Куда модератор отправит GRAM после проверки работы</div>
+        <div class="aminor" id="tonHint" style="margin-top:7px">Куда модератор отправит GRAM после проверки работы</div>
       </div>
       <div class="statgrid" style="margin-top:12px">
         <div class="sg"><img src="assets/ic_lvl.png"><div><i>Уровень</i><b id="sgLvl">1</b></div></div>
@@ -2282,7 +2282,20 @@ function renderMe() {
   // аватар: своё фото или лого 21
   $('#meAvaImg').src = u.avatar.custom ? u.avatar.custom : 'assets/logo.png';
   $('#meNickInp').value = (u.nick || '').replace(/^@+/, '');
-  $('#tonInp').value = (u.tonVia === 'tonconnect' && u.ton) ? u.ton : (u.ton || '');
+  const ti = $('#tonInp');
+  const viaTC = u.tonVia === 'tonconnect' && !!u.ton;
+  ti.value = u.ton || '';
+  // адрес пришёл из кошелька — руками его не правим (отключить можно кнопкой ниже)
+  ti.readOnly = viaTC;
+  ti.style.opacity = viaTC ? '.72' : '';
+  ti.title = viaTC ? 'Адрес получен через TON Connect' : '';
+  const th = $('#tonHint');
+  if (th) {
+    th.textContent = viaTC
+      ? '✓ Подключён' + (u.tonWallet ? ' · ' + u.tonWallet : '') + ' · сюда модератор отправит GRAM'
+      : 'Куда модератор отправит GRAM после проверки работы';
+    th.style.color = viaTC ? 'var(--green)' : '';
+  }
   renderTonBtn();
   $('#photoRm').style.display = u.avatar.custom ? '' : 'none';
   // сектор района: донаты идут в обеспечение своей части района
@@ -2351,8 +2364,8 @@ $('#tonInp').addEventListener('change', e => {
   if (!raw) { st.user.ton = ''; save(); toast('Кошелёк не указан', ''); return; }
   const okAddr = /^(UQ|EQ)[-A-Za-z0-9_]{46,50}$/.test(raw) || /^-?\d+:[0-9a-fA-F]{64}$/.test(raw);
   const m = raw.match(/^@?([A-Za-z0-9_]{4,32})$/);
-  if (okAddr) { st.user.ton = raw; st.user.tonVia = ''; }
-  else if (m) st.user.ton = m[1].toLowerCase() + '.ton';
+  if (okAddr) { st.user.ton = raw; st.user.tonVia = ''; st.user.tonRaw = ''; st.user.tonWallet = ''; }
+  else if (m) { st.user.ton = m[1].toLowerCase() + '.ton'; st.user.tonVia = ''; st.user.tonRaw = ''; st.user.tonWallet = ''; }
   else { toast('Не похоже на TON-адрес или @ник', ''); e.target.value = st.user.ton || ''; return; }
   save();
   toast('Кошелёк сохранён', 'assets/ic_wallet.png');
@@ -2423,48 +2436,146 @@ function gramOf(rub) { return window.__gramRub > 0 ? (rub / window.__gramRub).to
 function tonLink(to, grams, note) {
   return 'ton://transfer/' + encodeURIComponent(to) + '?amount=' + grams + '&text=' + encodeURIComponent(note || '21 · ордер');
 }
-/* ---------------- TON CONNECT UI ---------------- */
+/* ---------------- TON CONNECT UI ----------------
+   SDK: assets/vendor/tonconnect-ui.min.js → window.TON_CONNECT_UI
+   Манифест: /tonconnect-manifest.json (отдаёт http-wrapper.js, origin подставляется сам).
+   Подключение — ui.openModal() + ожидание onStatusChange (метода ui.connect() в SDK нет).
+   Адрес храним в user-friendly виде (UQ…/EQ…), сырой raw (0:hex) — в st.user.tonRaw. */
 const OWNER_WALLET = 'UQC1xYc4aPgMaHjER3xZPRKz4LfYgDyNSBSxykZmB2YbsWLW'; // кошелёк района · кнопка «Внести»
-let tonUI = null, tonUIGone = false, tonWalletAddr = null;
+let tonUI = null, tonUIGone = false, tonWalletAddr = null, tonWalletName = '';
+let tonConnecting = false, tonRestored = false;
 function shortAddr(a) { return a && a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : (a || ''); }
+/* raw «0:abc…» → дружелюбный «UQ…» (bounceable=false, как в кошельках) */
+function tonFriendly(addr, chain) {
+  if (!addr) return '';
+  if (!/^-?\d+:[0-9a-fA-F]{64}$/.test(addr)) return addr;   // уже UQ…/EQ…
+  try {
+    const G = window.TON_CONNECT_UI;
+    if (G && typeof G.toUserFriendlyAddress === 'function') {
+      return G.toUserFriendlyAddress(addr, chain === '-3' || chain === -3);  // -3 = testnet
+    }
+  } catch (e) {}
+  return addr;
+}
+function tonApplyWallet(w) {
+  const acc = w && w.account;
+  tonWalletAddr = acc ? tonFriendly(acc.address, acc.chain) : null;
+  tonWalletName = (w && w.device && w.device.appName) || '';
+  if (!st.user) return;
+  if (tonWalletAddr) {
+    st.user.ton = tonWalletAddr;
+    st.user.tonRaw = acc.address;
+    st.user.tonChain = acc.chain || '';
+    st.user.tonWallet = tonWalletName;
+    st.user.tonVia = 'tonconnect';
+  } else if (st.user.tonVia === 'tonconnect') {
+    st.user.ton = ''; st.user.tonRaw = ''; st.user.tonChain = ''; st.user.tonWallet = ''; st.user.tonVia = '';
+  }
+  save(); refreshAll();
+}
 function ensureTonUI() {
   if (tonUIGone) return null;
   if (tonUI) return tonUI;
   const G = window.TON_CONNECT_UI;
   if (!G || !G.TonConnectUI) { tonUIGone = true; return null; }
   try {
-    tonUI = new G.TonConnectUI({ manifestUrl: location.origin + '/tonconnect-manifest.json', language: 'ru' });
-    tonUI.onStatusChange(w => {
-      tonWalletAddr = (w && w.account) ? w.account.address : null;
-      if (tonWalletAddr) { st.user.ton = tonWalletAddr; st.user.tonVia = 'tonconnect'; }
-      else if (st.user.tonVia === 'tonconnect') { st.user.ton = ''; st.user.tonVia = ''; }
-      save(); refreshAll();
-      toast(w ? '👛 Кошелёк подключён' : 'Кошелёк отключён', 'assets/ic_wallet.png');
+    // манифест: абсолютный URL рядом с приложением — работает и в корне (node-хост),
+    // и на подпути (GitHub Pages /21app/), где origin+'/…' дал бы 404
+    let manifestUrl = window.OS21_TON_MANIFEST;
+    if (!manifestUrl) {
+      const dir = location.pathname.replace(/[^/]*$/, '');
+      manifestUrl = location.origin + dir + 'tonconnect-manifest.json';
+    }
+    tonUI = new G.TonConnectUI({
+      manifestUrl,
+      language: 'ru',
+      uiPreferences: { theme: (window.__tg && window.__tg.colorScheme === 'dark') ? 'DARK' : 'LIGHT' },
+      actionsConfiguration: {
+        // после подтверждения в кошельке возвращаемся в мини-апп, а не в браузер
+        twaReturnUrl: 'https://t.me/twentyonemovementbot/app',
+        returnStrategy: 'back',
+      },
     });
+    let first = true;
+    tonUI.onStatusChange(w => {
+      const had = !!tonWalletAddr;
+      tonApplyWallet(w);
+      if (first) { first = false; if (w) return; }          // тихое восстановление сессии
+      if (!!w !== had || (w && !had)) {
+        toast(w ? '👛 Кошелёк подключён' : 'Кошелёк отключён', 'assets/ic_wallet.png');
+      }
+    });
+    // восстановление прошлой сессии (переоткрытие мини-аппа)
+    if (tonUI.connectionRestored && typeof tonUI.connectionRestored.then === 'function') {
+      tonUI.connectionRestored.then(ok => {
+        tonRestored = true;
+        if (ok && tonUI.wallet) tonApplyWallet(tonUI.wallet);
+        renderTonBtn();
+      }).catch(() => { tonRestored = true; });
+    } else { tonRestored = true; }
   } catch (e) { tonUI = null; tonUIGone = true; }
   return tonUI;
 }
 function renderTonBtn() {
   const b = $('#tonConnectBtn');
   if (!b) return;
-  b.textContent = tonWalletAddr ? '👛 ' + shortAddr(tonWalletAddr) + ' · отключить' : '👛 Подключить кошелёк · TON Connect';
+  if (tonConnecting) {
+    b.textContent = '⏳ Открываем кошелёк…';
+    b.disabled = true;
+    b.style.background = '#eef0f3'; b.style.color = 'var(--ink)';
+    return;
+  }
+  b.disabled = false;
+  b.textContent = tonWalletAddr
+    ? '👛 ' + (tonWalletName ? tonWalletName + ' · ' : '') + shortAddr(tonWalletAddr) + ' · отключить'
+    : '👛 Подключить кошелёк · TON Connect';
   b.style.background = tonWalletAddr ? '#eef0f3' : 'var(--blue)';
   b.style.color = tonWalletAddr ? 'var(--ink)' : '#fff';
+}
+/* Открывает модалку выбора кошелька и ждёт подключения.
+   Возвращает адрес (UQ…) или null, если пользователь закрыл окно. */
+function tonConnect(ui) {
+  if (ui.connected && ui.wallet) { tonApplyWallet(ui.wallet); return Promise.resolve(tonWalletAddr); }
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (done) return; done = true; offStatus && offStatus(); offModal && offModal(); resolve(v); };
+    const offStatus = ui.onStatusChange(w => { if (w && w.account) { tonApplyWallet(w); finish(tonWalletAddr); } });
+    const offModal = ui.onModalStateChange(s => {
+      // закрыли окно вручную и кошелёк так и не пришёл
+      if (s && s.status === 'closed' && s.closeReason !== 'wallet-selected') {
+        setTimeout(() => { if (ui.connected && ui.wallet) { tonApplyWallet(ui.wallet); finish(tonWalletAddr); } else finish(null); }, 400);
+      }
+    });
+    Promise.resolve(ui.openModal()).catch(() => finish(null));
+    setTimeout(() => finish(ui.connected && ui.wallet ? tonWalletAddr : null), 180000);  // страховка
+  });
 }
 $('#tonConnectBtn').addEventListener('click', async () => {
   const ui = ensureTonUI();
   if (!ui) { toast('TON Connect не загрузился · впиши адрес вручную', 'assets/ic_wallet.png'); return; }
-  if (tonWalletAddr) { try { await ui.disconnect(); } catch (e) {} return; }
+  if (tonWalletAddr) {
+    try { await ui.disconnect(); } catch (e) {}
+    tonApplyWallet(null); renderTonBtn();
+    return;
+  }
+  if (tonConnecting) return;
+  tonConnecting = true; renderTonBtn();
   try {
-    const ok = await ui.connect();
-    if (ok && ui.account) {
-      tonWalletAddr = ui.account.address;
-      st.user.ton = tonWalletAddr; st.user.tonVia = 'tonconnect';
-      st.log.unshift({ s: '👛 Кошелёк подключён через TON Connect: ' + shortAddr(tonWalletAddr), ts: Date.now() });
+    const addr = await tonConnect(ui);
+    if (addr) {
+      st.log.unshift({ s: '👛 Кошелёк подключён через TON Connect: ' + shortAddr(addr), ts: Date.now() });
+      st.log = st.log.slice(0, 30);
       save(); refreshAll();
       toast('👛 Кошелёк подключён', 'assets/ic_wallet.png');
+      tgNotify && tgNotify('success');
+    } else {
+      toast('Подключение отменено', '');
     }
-  } catch (e) { toast('Подключение отменено', ''); }
+  } catch (e) {
+    toast('Не удалось подключить кошелёк', '');
+  } finally {
+    tonConnecting = false; renderTonBtn();
+  }
 });
 async function tonDepositSheet(addr, cfg) {
   cfg = cfg || {};
@@ -2482,7 +2593,11 @@ async function tonDepositSheet(addr, cfg) {
     l0.appendChild(cp0); body0.appendChild(l0);
     openSheet('assets/ic_wallet.png', title, body0); return;
   }
-  if (!tonWalletAddr) { try { await ui.connect(); } catch (e) {} }
+  if (!tonWalletAddr) {
+    toast('Сначала подключим кошелёк', 'assets/ic_wallet.png');
+    try { await tonConnect(ui); } catch (e) {}
+    renderTonBtn();
+  }
   if (!tonWalletAddr) { toast('Нужен подключённый кошелёк', ''); return; }
   let ton = 1;
   const body = el('div');
@@ -2495,11 +2610,17 @@ async function tonDepositSheet(addr, cfg) {
   };
   [0.5, 1, 2.5, 5].forEach(v => mk(v, v === 1));
   body.appendChild(row);
-  body.appendChild(el('div', 'aminor', 'адрес: ' + shortAddr(addr)));
+  body.appendChild(el('div', 'aminor', 'с кошелька ' + shortAddr(tonWalletAddr) + ' → ' + shortAddr(addr)));
   const b = el('button', 'bigbtn', 'Отправить через кошелёк');
   b.addEventListener('click', async () => {
+    if (b.disabled) return;
+    b.disabled = true; b.textContent = 'Подтверди в кошельке…';
     try {
-      await ui.sendTransaction({ validUntil: Date.now() + 5 * 60000, messages: [{ address: addr, amount: String(Math.round(ton * 1e9)) }] });
+      // validUntil — UNIX-время В СЕКУНДАХ (мс кошелёк отвергает как «просроченную» транзакцию)
+      await ui.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{ address: addr, amount: String(Math.round(ton * 1e9)) }],
+      });
       const rub = Math.round(ton * (window.__tonRub || 475));
       st.fund.bank += rub;
       if (cfg.creditMine) st.fund.myContrib = (st.fund.myContrib || 0) + rub;
@@ -2507,7 +2628,10 @@ async function tonDepositSheet(addr, cfg) {
       save(); refreshAll(); closeSheet();
       toast('💎 Отправлено · ' + ton + ' TON', 'assets/ic_check.png');
       botNotify('💎 TON-ДЕПОЗИТ: ' + (st.user.nick || st.user.name) + ' → ' + (cfg.logTag || 'фонд') + ' · ' + ton + ' TON (tx в сети)');
-    } catch (e) { toast('Перевод отменён', ''); }
+    } catch (e) {
+      toast('Перевод отменён', '');
+      b.disabled = false; b.textContent = 'Отправить через кошелёк';
+    }
   });
   body.appendChild(b);
   openSheet('assets/ic_wallet.png', title, body);
@@ -2902,6 +3026,7 @@ $('#onbNext').addEventListener('click', () => {
 });
 function enterApp() {
   startMembersPoll();
+  ensureTonUI();          // тихо поднимаем прошлую сессию кошелька
   $('#gate').style.display = 'none';
   $('#onb').style.display = 'none';
   $('#app').style.display = 'flex';
