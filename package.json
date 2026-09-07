@@ -1,0 +1,13 @@
+{
+  "name": "21app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "21 — районная сеть (Telegram Mini App): статика + бот-релей",
+  "main": "http-wrapper.js",
+  "scripts": {
+    "start": "node http-wrapper.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
