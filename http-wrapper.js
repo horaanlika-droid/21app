@@ -183,6 +183,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (urlPath === '/tonconnect-manifest.json') {
+    const host = req.headers.host || ('localhost:' + PORT);
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const origin = proto + '://' + host;
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({
+      name: '21 · районная сеть',
+      description: 'Карта дел, задачи во дворе, общий фонд и суд соседей.',
+      url: origin,
+      iconUrl: origin + '/assets/logo.png',
+      version: '1',
+    }));
+    return;
+  }
+
   // наружу — только файлы приложения; остальное (служебное, исходники, фото) не отдаём
   if (urlPath.includes('/.') || !(PUBLIC_FILE.test(urlPath) || ASSET_FILE.test(urlPath))) {
     return send(res, 404, '404');
