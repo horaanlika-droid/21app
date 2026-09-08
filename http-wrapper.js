@@ -337,6 +337,44 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('21 → http://0.0.0.0:' + PORT + '  (root: ' + ROOT + ', bot relay: ' + (BOT_TOKEN ? 'ON' : 'OFF — TELEGRAM_BOT_TOKEN не задан') + ')');
-});
+/* ---------- Запуск ----------
+   Защита от двойного старта в ОДНОМ процессе: если модуль подключат дважды
+   (например, index.js → http-wrapper.js и хостинг сам ещё раз), второй раз
+   слушатель не создаём — иначе EADDRINUSE на собственном же порту. */
+if (globalThis.__os21ServerStarted) {
+  console.log('21 → сервер уже запущен в этом процессе, повторный старт пропущен');
+} else {
+  globalThis.__os21ServerStarted = true;
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      // Порт занят — почти всегда это второй экземпляр приложения.
+      // Пишем понятную подсказку вместо стектрейса и выходим тихо,
+      // чтобы хостинг не уходил в бесконечный цикл перезапусков.
+      console.error(
+        '\n21 ✕ Порт ' + PORT + ' уже занят.\n' +
+        '   Обычно это значит, что приложение запущено дважды.\n' +
+        '   Проверьте, что хостинг стартует ТОЛЬКО одну команду: npm start\n' +
+        '   (она же node http-wrapper.js). Если задан и Docker CMD, и start-команда\n' +
+        '   панели — уберите одну из них.\n'
+      );
+      process.exit(0);
+    }
+    console.error('21 ✕ Ошибка сервера:', err && err.message ? err.message : err);
+    process.exit(1);
+  });
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log('21 → http://0.0.0.0:' + PORT + '  (root: ' + ROOT + ', bot relay: ' + (BOT_TOKEN ? 'ON' : 'OFF — TELEGRAM_BOT_TOKEN не задан') + ')');
+  });
+
+  // корректное завершение по сигналу платформы — освобождаем порт сразу,
+  // иначе следующий инстанс упрётся в тот же EADDRINUSE
+  const shutdown = (sig) => () => {
+    console.log('21 → получен ' + sig + ', останавливаюсь…');
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 5000).unref();
+  };
+  process.on('SIGTERM', shutdown('SIGTERM'));
+  process.on('SIGINT', shutdown('SIGINT'));
+}
