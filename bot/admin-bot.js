@@ -594,7 +594,7 @@ class AdminBot {
             reward: 'Пришлите новую цену в рублях (число).',
             title: 'Пришлите новое название.',
             desc: 'Пришлите новое описание.',
-            xy: 'Пришлите координаты через запятую: <code>48.7894, 44.7783</code>',
+            xy: 'Пришлите координаты (<code>48.7894, 44.7783</code>) или ссылку на Яндекс/Google Карты.',
           };
           this.flows.set(chatId, { action: 'edit', field, id, step: 'value' });
           await this.answer(cq.id);
@@ -771,7 +771,7 @@ class AdminBot {
         flow.draft.reward = reward;
         flow.step = 'xy';
         return this.send(chatId,
-          'Координаты через запятую или «-» для центра района.\n' +
+          'Координаты, ссылка на Яндекс/Google Карты или «-» для центра района.\n' +
           'Например: <code>48.7894, 44.7783</code>');
       }
       if (flow.step === 'xy') {
@@ -906,11 +906,29 @@ class AdminBot {
     return v;
   }
 
+  /**
+   * Разбирает пару координат из текста.
+   * Принимает «48.7894, 44.7783», «48.7894 44.7783» и русскую раскладку
+   * с десятичной запятой: «48,7894 44,7783» — раньше такой ввод отвергался.
+   * Также понимает ссылки Яндекс/Google Карт с координатами.
+   */
   parseXY(text) {
-    const m = String(text).replace(/,\s*(?=\d)/g, ' ').match(/(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)/);
-    if (!m) return null;
-    const x = parseFloat(m[1].replace(',', '.'));
-    const y = parseFloat(m[2].replace(',', '.'));
+    let str = String(text).trim();
+
+    // ссылка на карты: ll=44.77,48.78 (Яндекс — долгота первая) или @48.78,44.77 (Google)
+    const ll = str.match(/[?&]ll=(-?\d+\.\d+)[,%2C]+(-?\d+\.\d+)/i);
+    if (ll) {
+      const lng = parseFloat(ll[1]), lat = parseFloat(ll[2]);
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return [lat, lng];
+    }
+    const at = str.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (at) str = at[1] + ' ' + at[2];
+
+    // достаём два числа; десятичный разделитель — точка или запятая
+    const nums = str.match(/-?\d+(?:[.,]\d+)?/g);
+    if (!nums || nums.length < 2) return null;
+    const x = parseFloat(nums[0].replace(',', '.'));
+    const y = parseFloat(nums[1].replace(',', '.'));
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     if (Math.abs(x) > 90 || Math.abs(y) > 180) return null;
     return [x, y];

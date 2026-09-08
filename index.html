@@ -168,7 +168,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 #hdr .hav{width:42px;height:42px;border-radius:12px;background:var(--chip);flex:0 0 42px;display:flex;align-items:center;justify-content:center}
 #hdrAvatar{width:19px;height:38px}
 #hdr .hlogo{width:42px;height:42px;border-radius:12px;flex:0 0 42px;background:#fff;object-fit:cover}
-#btnHdrQR img{width:26px;height:26px;border-radius:8px;display:block}
 .strike{font-size:27px;font-weight:900;letter-spacing:.06em;text-align:center;margin:18px 0 4px;color:var(--ink,#111)}
 .strike s{color:#b0b3b8;margin-right:10px}
 .catdots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px}
@@ -204,11 +203,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   padding:6px 10px;font-size:14px;font-weight:600;
 }
 .hchip img{width:16px;height:16px}
-#btnHdrQR{
-  width:40px;height:40px;border-radius:12px;background:var(--blue);flex:0 0 40px;
-  display:flex;align-items:center;justify-content:center;
-}
-#btnHdrQR:active{opacity:.8}
 
 /* ---------- main / экраны ---------- */
 #main{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;-webkit-overflow-scrolling:touch}
@@ -362,10 +356,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .tchip.on{background:var(--blue);color:var(--btn-ink)}
 .aminor{font-size:12.5px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.5}
 
-/* ---------- стикер ---------- */
-.sticker-box{display:flex;flex-direction:column;align-items:center;gap:13px}
-#stickerC{border-radius:14px;box-shadow:0 3px 14px rgba(0,0,0,.14);max-width:100%}
-.sticker-url{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--gray);word-break:break-all;text-align:center}
 
 /* ---------- фонд ---------- */
 .bankcard{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
@@ -429,6 +419,10 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .case .cfoot .myvote{color:var(--blue);font-weight:700}
 
 /* ---------- профиль ---------- */
+.pickmap{width:100%;height:190px;border-radius:12px;overflow:hidden;background:var(--chip);margin-bottom:7px}
+.pickmap-hint{font-size:12.5px;color:var(--gray);margin-bottom:7px}
+.pickmap-btn{width:100%;margin-top:7px;border:none;border-radius:11px;padding:10px;font-weight:700;font-size:14px;cursor:pointer;background:var(--chip);color:var(--ink);font-family:inherit}
+.pickmap-btn:active{opacity:.85}
 .tiles3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px}
 .tile3{
   border-radius:14px;padding:15px 8px;display:flex;flex-direction:column;align-items:center;gap:9px;
@@ -553,14 +547,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #toast img,#toast canvas{width:22px;height:22px;flex:0 0 22px}
 
-/* ---------- print (стикер 60 мм) ---------- */
-#printZone{display:none}
-@media print{
-  body{background:#fff}
-  body>*{display:none!important}
-  #printZone{display:block!important}
-  #printZone img{width:60mm;height:auto;display:block;margin:0 auto}
-}
 </style>
 </head>
 <body>
@@ -602,7 +588,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
       <span class="hchip"><img src="assets/ic_heart.png" alt=""> <span id="hdrKarma">0</span></span>
       <span class="hchip"><img src="assets/ic_coin.png" alt=""> <span id="hdrWallet">0</span></span>
     </div>
-    <button id="btnHdrQR" title="Стикеры с QR"><img src="assets/ic_qr.png" alt="QR"></button>
   </header>
 
   <main id="main">
@@ -697,7 +682,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
       <div class="tiles3">
         <button class="tile3" id="tileHow" style="background:var(--blue-l)"><img src="assets/qt_help.png">Как работает 21</button>
         <button class="tile3" id="tileRules" style="background:var(--violet-l)"><img src="assets/ic_court.png">Правила важного</button>
-        <button class="tile3" id="tileQR" style="background:var(--green-l)"><img src="assets/ic_qr.png">Стикеры с QR</button>
       </div>
       <div class="card mecard">
         <img id="meAvaImg" class="meava" src="assets/logo.png" alt="">
@@ -783,8 +767,11 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <div class="fld"><label>ЗАГОЛОВОК</label><input id="apTitle" type="text" maxlength="48" placeholder="Что не так"></div>
         <div class="fld"><label>ОПИСАНИЕ</label><textarea id="apDesc" maxlength="160" placeholder="Что нужно сделать"></textarea></div>
         <div class="fld"><label>ТИП ЗАДАЧИ</label><div class="tchips" id="apType"></div></div>
-        <div class="fld"><label>ШИРОТА / ДОЛГОТА</label>
-          <div class="row2"><input id="apLat" type="text" inputmode="decimal"><input id="apLng" type="text" inputmode="decimal"></div>
+        <div class="fld"><label>ГДЕ ЭТО · ТОЧКА НА КАРТЕ</label>
+          <div id="apPickMap" class="pickmap"></div>
+          <div class="pickmap-hint" id="apPickHint">Нажми на карту, чтобы поставить метку · или перетащи её</div>
+          <div class="row2"><input id="apLat" type="text" inputmode="decimal" placeholder="широта"><input id="apLng" type="text" inputmode="decimal" placeholder="долгота"></div>
+          <button class="pickmap-btn" id="apPickHere" type="button">Моё местоположение</button>
         </div>
         <div class="fld"><label>XP / КАРМА / БЮДЖЕТ ₽</label>
           <div class="row2" style="grid-template-columns:1fr 1fr 1fr">
@@ -854,7 +841,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 </div>
 
 <div id="toast"></div>
-<div id="printZone"></div>
 
 <script>
 /* ================================================================
@@ -862,316 +848,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
    данные: localStorage · модерация/админ — на стороне приложения
    ================================================================ */
 'use strict';
-/*QR:BEGIN*/
-// «21» QR-кодер: byte mode, уровни коррекции L/M/Q/H, версии 1–6, выбор маски по penalty.
-// Чистый JS, без зависимостей. QR21.encode(text, {ec:'H'}) → {size, get(x,y), mask, version, ec}
-//
-// Уровень H (30%) нужен, чтобы логотип в центре не ломал считывание:
-// «дырка» под лого съедает ~10% модулей, а L восстанавливает только 7%.
-const QR21 = (function () {
-  'use strict';
-  // --- GF(256), примитив 0x11D ---
-  const EXP = new Int32Array(512), LOG = new Int32Array(256);
-  (function () {
-    let x = 1;
-    for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
-    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
-  })();
-  const gmul = (a, b) => (a && b) ? EXP[LOG[a] + LOG[b]] : 0;
 
-  /* Таблицы блоков, версии 1..6.
-     Формат: [ecPerBlock, [ [блоков, данных в блоке], ... ] ]
-     Разбиение на блоки обязательно: начиная с версии 3 уровень H
-     использует несколько блоков, и без интерливинга код не прочитается. */
-  const RS = {
-    L: [
-      [7,  [[1, 19]]],
-      [10, [[1, 34]]],
-      [15, [[1, 55]]],
-      [20, [[1, 80]]],
-      [26, [[1, 108]]],
-      [18, [[2, 68]]],
-    ],
-    M: [
-      [10, [[1, 16]]],
-      [16, [[1, 28]]],
-      [26, [[1, 44]]],
-      [18, [[2, 32]]],
-      [24, [[2, 43]]],
-      [16, [[4, 27]]],
-    ],
-    Q: [
-      [13, [[1, 13]]],
-      [22, [[1, 22]]],
-      [18, [[2, 17]]],
-      [26, [[2, 24]]],
-      [18, [[2, 15], [2, 16]]],
-      [24, [[4, 19]]],
-    ],
-    H: [
-      [17, [[1, 9]]],
-      [28, [[1, 16]]],
-      [22, [[2, 13]]],
-      [16, [[4, 9]]],
-      [22, [[2, 11], [2, 12]]],
-      [28, [[4, 15]]],
-    ],
-  };
-  /** Биты уровня коррекции в поле формата. */
-  const EC_BITS = { L: 1, M: 0, Q: 3, H: 2 };
-
-  /** Сколько всего кодовых слов данных у версии+уровня. */
-  function dataCapacity(ec, ver) {
-    const [, groups] = RS[ec][ver - 1];
-    return groups.reduce((s, [blocks, cw]) => s + blocks * cw, 0);
-  }
-
-  function rsGen(deg) { // полином делителя, коэффициенты по возрастанию степени
-    let g = [1];
-    for (let i = 0; i < deg; i++) {
-      const a = EXP[i];
-      const ng = new Array(g.length + 1).fill(0);
-      for (let k = 0; k < g.length; k++) {
-        ng[k] ^= gmul(g[k], a);
-        ng[k + 1] ^= g[k];
-      }
-      g = ng;
-    }
-    return g; // g[deg] === 1
-  }
-
-  function rsEncode(data, deg) {
-    const gen = rsGen(deg);
-    const rem = new Array(deg).fill(0);
-    for (let i = 0; i < data.length; i++) {
-      const factor = data[i] ^ rem[0];
-      rem.shift(); rem.push(0);
-      if (factor) for (let k = 0; k < deg; k++) rem[k] ^= gmul(gen[deg - 1 - k], factor);
-    }
-    return rem;
-  }
-
-  const MASKS = [
-    (x, y) => (x + y) % 2 === 0,
-    (x, y) => y % 2 === 0,
-    (x, y) => x % 3 === 0,
-    (x, y) => (x + y) % 3 === 0,
-    (x, y) => (((y >> 1) & 1) + Math.floor(x / 3)) % 2 === 0,
-    (x, y) => ((x * y) % 2) + ((x * y) % 3) === 0,
-    (x, y) => (((x * y) % 2) + ((x * y) % 3)) % 2 === 0,
-    (x, y) => (((x * y) % 3) + ((x + y) % 2)) % 2 === 0,
-  ];
-
-  function formatBits(ec, mask) {
-    const data = (EC_BITS[ec] << 3) | mask;
-    let rem = data;
-    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
-    return ((data << 10) | rem) ^ 0x5412;
-  }
-
-  /**
-   * @param {string} text данные
-   * @param {{ec?: 'L'|'M'|'Q'|'H', minVersion?: number}} [opts]
-   *
-   * Если данные не влезают на запрошенном уровне, коррекция понижается
-   * (H→Q→M→L), а фактический уровень возвращается в поле .ec — вызывающий
-   * код по нему решает, можно ли рисовать логотип поверх.
-   */
-  function encode(text, opts) {
-    const want = (opts && opts.ec) || 'L';
-    if (!RS[want]) throw new Error('QR: неизвестный уровень ' + want);
-    const minVer = (opts && opts.minVersion) || 1;
-    const bytes = new TextEncoder().encode(text);
-
-    // порядок понижения: только вниз от запрошенного
-    const order = ['H', 'Q', 'M', 'L'];
-    const chain = order.slice(order.indexOf(want));
-
-    let ec = null, ver = 0;
-    for (const lvl of chain) {
-      for (let v = Math.max(1, minVer); v <= RS[lvl].length; v++) {
-        if (4 + 8 + bytes.length * 8 <= dataCapacity(lvl, v) * 8) { ec = lvl; ver = v; break; }
-      }
-      if (ver) break;
-    }
-    if (!ver) {
-      throw new Error('QR: данные не помещаются (' + bytes.length +
-        ' байт, максимум ' + dataCapacity('L', RS.L.length) + ')');
-    }
-
-    const [ecPerBlock, groups] = RS[ec][ver - 1];
-    const totalData = dataCapacity(ec, ver);
-    const n = 17 + 4 * ver;
-
-    // --- битовый поток ---
-    const bits = [];
-    const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
-    push(4, 4);                 // режим: byte
-    push(bytes.length, 8);      // длина (версии 1..9 → 8 бит)
-    for (let i = 0; i < bytes.length; i++) push(bytes[i], 8);
-    push(0, Math.min(4, totalData * 8 - bits.length));  // терминатор
-    while (bits.length % 8) bits.push(0);
-    const pads = [0xec, 0x11];
-    let pi = 0;
-    while (bits.length < totalData * 8) { push(pads[pi & 1], 8); pi++; }
-
-    const dataCw = [];
-    for (let i = 0; i < bits.length; i += 8) {
-      let b = 0;
-      for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
-      dataCw.push(b);
-    }
-
-    // --- разбиение на блоки + RS для каждого ---
-    const dataBlocks = [], ecBlocks = [];
-    let pos = 0;
-    for (const [blocks, cwPerBlock] of groups) {
-      for (let b = 0; b < blocks; b++) {
-        const chunk = dataCw.slice(pos, pos + cwPerBlock);
-        pos += cwPerBlock;
-        dataBlocks.push(chunk);
-        ecBlocks.push(rsEncode(chunk, ecPerBlock));
-      }
-    }
-
-    // --- интерливинг: по одному слову из каждого блока по кругу ---
-    const all = [];
-    const maxData = Math.max(...dataBlocks.map(b => b.length));
-    for (let i = 0; i < maxData; i++) {
-      for (const b of dataBlocks) if (i < b.length) all.push(b[i]);
-    }
-    for (let i = 0; i < ecPerBlock; i++) {
-      for (const b of ecBlocks) all.push(b[i]);
-    }
-
-    // --- матрица ---
-    const mod = Array.from({ length: n }, () => new Array(n).fill(null));
-    const isFunc = Array.from({ length: n }, () => new Array(n).fill(false));
-    const set = (x, y, dark) => { mod[y][x] = dark ? 1 : 0; isFunc[y][x] = true; };
-
-    function finder(cx, cy) {
-      for (let dy = -1; dy <= 7; dy++) for (let dx = -1; dx <= 7; dx++) {
-        const x = cx + dx, y = cy + dy;
-        if (x < 0 || x >= n || y < 0 || y >= n) continue;
-        let dark;
-        if (dx < 0 || dx > 6 || dy < 0 || dy > 6) dark = false;
-        else { const m = Math.max(Math.abs(dx - 3), Math.abs(dy - 3)); dark = m !== 2; }
-        set(x, y, dark);
-      }
-    }
-    finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
-
-    for (let i = 8; i <= n - 9; i++) {
-      if (mod[6][i] === null) set(i, 6, i % 2 === 0);
-      if (mod[i][6] === null) set(6, i, i % 2 === 0);
-    }
-    // выравнивающий узор (версии 2..6 — ровно один, в правом нижнем углу)
-    if (ver >= 2) {
-      const c = n - 7;
-      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
-        set(c + dx, c + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
-    }
-    for (let i = 0; i <= 8; i++) {
-      if (mod[8][i] === null) set(i, 8, 0);
-      if (mod[i][8] === null) set(8, i, 0);
-    }
-    for (let i = 0; i < 8; i++) set(n - 1 - i, 8, 0);
-    for (let i = 0; i < 7; i++) set(8, n - 7 + i, 0);
-    set(8, n - 8, 1); // тёмный модуль
-
-    let bi = 0;
-    const totalBits = all.length * 8;
-    for (let col = n - 1; col >= 1; col -= 2) {
-      if (col === 6) col--;
-      for (let k = 0; k < n; k++) {
-        for (let c = 0; c < 2; c++) {
-          const x = col - c;
-          const y = (((col + 1) & 2) === 0) ? n - 1 - k : k;
-          if (mod[y][x] === null) {
-            mod[y][x] = bi < totalBits ? (all[bi >> 3] >>> (7 - (bi & 7))) & 1 : 0;
-            bi++;
-          }
-        }
-      }
-    }
-
-    const clone = () => mod.map(r => r.slice());
-    function drawFormat(bits, m) {
-      const b = i => ((bits >>> i) & 1) !== 0;
-      for (let i = 0; i <= 5; i++) m[i][8] = b(i) ? 1 : 0;
-      m[7][8] = b(6) ? 1 : 0; m[8][8] = b(7) ? 1 : 0; m[8][7] = b(8) ? 1 : 0;
-      for (let i = 9; i < 15; i++) m[8][14 - i] = b(i) ? 1 : 0;
-      for (let i = 0; i < 8; i++) m[8][n - 1 - i] = b(i) ? 1 : 0;
-      for (let i = 8; i < 15; i++) m[n - 15 + i][8] = b(i) ? 1 : 0;
-      m[n - 8][8] = 1;
-    }
-
-    function penalty(m) {
-      let s = 0;
-      for (let y = 0; y < n; y++) {
-        let run = 1;
-        for (let x = 1; x < n; x++) {
-          if (m[y][x] === m[y][x - 1]) run++;
-          else { if (run >= 5) s += 3 + (run - 5); run = 1; }
-        }
-        if (run >= 5) s += 3 + (run - 5);
-      }
-      for (let x = 0; x < n; x++) {
-        let run = 1;
-        for (let y = 1; y < n; y++) {
-          if (m[y][x] === m[y - 1][x]) run++;
-          else { if (run >= 5) s += 3 + (run - 5); run = 1; }
-        }
-        if (run >= 5) s += 3 + (run - 5);
-      }
-      for (let y = 0; y < n - 1; y++) for (let x = 0; x < n - 1; x++) {
-        const c = m[y][x];
-        if (c === m[y][x + 1] && c === m[y + 1][x] && c === m[y + 1][x + 1]) s += 3;
-      }
-      const pat = [1, 0, 1, 1, 1, 0, 1];
-      for (let y = 0; y < n; y++) for (let x = 0; x <= n - 7; x++) {
-        let ok = true;
-        for (let i = 0; i < 7; i++) if (m[y][x + i] !== pat[i]) { ok = false; break; }
-        if (!ok) continue;
-        const before = x >= 4 && !m[y][x - 1] && !m[y][x - 2] && !m[y][x - 3] && !m[y][x - 4];
-        const after = x + 11 < n && !m[y][x + 7] && !m[y][x + 8] && !m[y][x + 9] && !m[y][x + 10];
-        if (before || after) s += 40;
-      }
-      for (let x = 0; x < n; x++) for (let y = 0; y <= n - 7; y++) {
-        let ok = true;
-        for (let i = 0; i < 7; i++) if (m[y + i][x] !== pat[i]) { ok = false; break; }
-        if (!ok) continue;
-        const before = y >= 4 && !m[y - 1][x] && !m[y - 2][x] && !m[y - 3][x] && !m[y - 4][x];
-        const after = y + 11 < n && !m[y + 7][x] && !m[y + 8][x] && !m[y + 9][x] && !m[y + 10][x];
-        if (before || after) s += 40;
-      }
-      let dark = 0;
-      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) dark += m[y][x];
-      s += Math.floor(Math.abs(dark * 100 / (n * n) - 50) / 5) * 10;
-      return s;
-    }
-
-    let best = null, bestPen = Infinity, bestMask = 0;
-    for (let mk = 0; mk < 8; mk++) {
-      const m = clone();
-      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-        if (!isFunc[y][x] && MASKS[mk](x, y)) m[y][x] ^= 1;
-      }
-      drawFormat(formatBits(ec, mk), m);
-      const p = penalty(m);
-      if (p < bestPen) { bestPen = p; best = m; bestMask = mk; }
-    }
-    return {
-      size: n, version: ver, mask: bestMask, ec,
-      get: (x, y) => best[y][x] === 1,
-      /** true для трёх «глаз» — их рисуем скруглёнными. */
-      isFinder: (x, y) =>
-        (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7),
-    };
-  }
-  return { encode };
-})();
-/*QR:END*/
 
 /* ---------------- константы ---------------- */
 /* Клиент не хранит секретов: служебные обращения идут на сервер приложения
@@ -1326,86 +1003,6 @@ function pixelateFile(file, maxPx = 48) {
   });
 }
 
-/* ---------------- QR в canvas ---------------- */
-/**
- * Рисует QR: скруглённые точки, фирменные «глаза», чистое окно под логотип.
- *
- * Уровень коррекции H (30%) — обязателен, если в центр кладём лого:
- * окно съедает ~8% модулей, а уровень L восстанавливает только 7%,
- * и код перестаёт читаться.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {string} text данные
- * @param {number} x,y левый верхний угол области
- * @param {number} size сторона области, px
- * @param {{color?:string, logo?:boolean, quiet?:number}} [opts]
- * @returns {{q:object, scale:number, ox:number, oy:number, hole:number}}
- */
-function drawQR(ctx, text, x, y, size, opts) {
-  const o = opts || {};
-  const color = o.color || '#0f1115';
-  const q = QR21.encode(text, { ec: 'H' });
-
-  // целые пиксели на модуль — иначе точки «плывут» и края мылятся
-  const quiet = o.quiet == null ? 2 : o.quiet;
-  const scale = Math.max(1, Math.floor(size / (q.size + quiet * 2)));
-  const side = q.size * scale;
-  const ox = x + Math.floor((size - side) / 2);
-  const oy = y + Math.floor((size - side) / 2);
-
-  // окно под логотип: радиус 16% ширины — проверено декодером,
-  // порог потери читаемости начинается около 22%
-  const holeR = o.logo ? Math.round(side * 0.16) : 0;
-  const cx = ox + side / 2, cy = oy + side / 2;
-
-  ctx.save();
-  ctx.fillStyle = color;
-
-  const inHole = (mx, my) => {
-    if (!holeR) return false;
-    const px = ox + mx * scale + scale / 2;
-    const py = oy + my * scale + scale / 2;
-    // + половина модуля, чтобы точки не «липли» к краю окна
-    return (px - cx) ** 2 + (py - cy) ** 2 <= (holeR + scale * 0.6) ** 2;
-  };
-
-  // 1) точки данных — круглые, кроме «глаз»
-  const r = scale * 0.5;
-  for (let yy = 0; yy < q.size; yy++) {
-    for (let xx = 0; xx < q.size; xx++) {
-      if (!q.get(xx, yy) || q.isFinder(xx, yy) || inHole(xx, yy)) continue;
-      ctx.beginPath();
-      ctx.arc(ox + xx * scale + scale / 2, oy + yy * scale + scale / 2, r * 0.92, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  // 2) «глаза»: скруглённая рамка + скруглённое ядро (как на образце)
-  const roundRect = (rx, ry, rw, rh, rad) => {
-    ctx.beginPath();
-    ctx.moveTo(rx + rad, ry);
-    ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, rad);
-    ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, rad);
-    ctx.arcTo(rx, ry + rh, rx, ry, rad);
-    ctx.arcTo(rx, ry, rx + rw, ry, rad);
-    ctx.closePath();
-  };
-  const eye = (gx, gy) => {
-    const px = ox + gx * scale, py = oy + gy * scale, s7 = scale * 7;
-    // внешняя рамка толщиной в модуль
-    ctx.lineWidth = scale;
-    ctx.strokeStyle = color;
-    roundRect(px + scale / 2, py + scale / 2, s7 - scale, s7 - scale, scale * 2);
-    ctx.stroke();
-    // ядро 3×3
-    roundRect(px + scale * 2, py + scale * 2, scale * 3, scale * 3, scale * 1.1);
-    ctx.fill();
-  };
-  eye(0, 0); eye(q.size - 7, 0); eye(0, q.size - 7);
-
-  ctx.restore();
-  return { q, scale, ox, oy, side, hole: holeR, cx, cy };
-}
 const deepLink = h => location.origin + location.pathname + h;
 
 /* ================================================================
@@ -1851,14 +1448,6 @@ function openQuest(id) {
   } else {
     body.appendChild(el('div', 'iphoto', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg><span>Фото «до/после» — станет пиксель-артом</span>'));
   }
-  // стикер
-  const stTile = el('button', 'tile');
-  stTile.innerHTML = '<span class="ti" style="background:#8b5cf6"><svg width="20" height="20" viewBox="0 0 20 20" fill="#fff"><path d="M2 2h7v7H2V2zm2 2v3h3V4H4zm7-2h7v7h-7V2zm2 2v3h3V4h-3zM2 11h7v7H2v-7zm2 2v3h3v-3H4zm7-2h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v3h-2v-3zm4 0h2v5h-5v-2h3v-3z"/></svg></span>';
-  stTile.appendChild(el('span', 'tt', 'Стикер с QR на место'));
-  stTile.appendChild(el('span', 'ts', 'распечатать и наклеить'));
-  stTile.appendChild(el('span', 'arr', '›'));
-  stTile.addEventListener('click', () => openSticker({ kind: 'quest', q }));
-  body.appendChild(stTile);
   // исполнитель: направить выплату на нужды района
   if (q.reward && (q.status === 'doing' || q.status === 'verify') && q.takenBy === st.user.name) {
     const pf = el('button', 'tile');
@@ -2077,18 +1666,58 @@ function openReport() {
   // координаты
   const f4 = el('div', 'fld');
   f4.innerHTML = '<label>ГДЕ ЭТО</label>';
+  // мини-карта с меткой: тыкнуть точнее, чем вводить цифры
+  const mapBox = el('div', 'pickmap');
+  f4.appendChild(mapBox);
+  const mapHint = el('div', 'pickmap-hint', 'Нажми на карту или перетащи метку');
+  f4.appendChild(mapHint);
+
   const row = el('div', 'row2'); row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:9px';
-  const il = el('input'); il.type = 'text'; il.inputMode = 'decimal'; il.value = String(CENTER[0].toFixed(5));
-  const ig = el('input'); ig.type = 'text'; ig.inputMode = 'decimal'; ig.value = String(CENTER[1].toFixed(5));
+  const il = el('input'); il.type = 'text'; il.inputMode = 'decimal'; il.value = String(CENTER[0].toFixed(6));
+  const ig = el('input'); ig.type = 'text'; ig.inputMode = 'decimal'; ig.value = String(CENTER[1].toFixed(6));
   row.append(il, ig);
   f4.appendChild(row);
+
+  // связываем карту и поля в обе стороны
+  let repMap = null, repMark = null;
+  const setFields = c => {
+    il.value = c[0].toFixed(6); ig.value = c[1].toFixed(6);
+    mapHint.textContent = 'Метка: ' + c[0].toFixed(5) + ', ' + c[1].toFixed(5);
+  };
+  const readFields = () => {
+    const a = parseFloat(il.value.replace(',', '.')), b2 = parseFloat(ig.value.replace(',', '.'));
+    return (isFinite(a) && isFinite(b2) && Math.abs(a) <= 90 && Math.abs(b2) <= 180) ? [a, b2] : null;
+  };
+  loadYandex().then(ok => {
+    if (!ok) { mapBox.style.display = 'none'; mapHint.textContent = 'Карта недоступна — координаты можно ввести вручную'; return; }
+    ymaps.ready(() => {
+      const start = readFields() || CENTER;
+      repMap = new ymaps.Map(mapBox, { center: start, zoom: 17, controls: ['zoomControl'] },
+        { suppressMapOpenBlock: true });
+      repMark = new ymaps.Placemark(start, {}, { preset: 'islands#redDotIcon', draggable: true });
+      repMap.geoObjects.add(repMark);
+      repMap.events.add('click', e => { const c = e.get('coords'); repMark.geometry.setCoordinates(c); setFields(c); });
+      repMark.events.add('dragend', () => setFields(repMark.geometry.getCoordinates()));
+    });
+  });
+  const syncMark = () => {
+    const c = readFields();
+    if (c && repMark) { repMark.geometry.setCoordinates(c); repMap.panTo(c, { duration: 200 }); }
+  };
+  il.addEventListener('change', syncMark);
+  ig.addEventListener('change', syncMark);
   const geo = el('button', 'bigbtn ghost', '');
   geo.style.cssText = 'margin-top:9px;background:#eef0f3;color:var(--blue)';
   geo.innerHTML = '📍&nbsp; Взять мою геопозицию';
   geo.addEventListener('click', () => {
     if (!navigator.geolocation) { toast('Геолокация недоступна', ''); return; }
     navigator.geolocation.getCurrentPosition(
-      p => { il.value = p.coords.latitude.toFixed(5); ig.value = p.coords.longitude.toFixed(5); toast('Геопозиция взята'); },
+      p => {
+        const c = [p.coords.latitude, p.coords.longitude];
+        setFields(c);
+        if (repMark) { repMark.geometry.setCoordinates(c); repMap.panTo(c, { duration: 200 }); }
+        toast('Геопозиция взята');
+      },
       () => toast('Нет доступа к геолокации', '')
     );
   });
@@ -2140,93 +1769,6 @@ function openReport() {
 $('#mapReport').addEventListener('click', openReport);
 $('#taskReport').addEventListener('click', openReport);
 
-/* ================================================================
-   СТИКЕР С QR
-   ================================================================ */
-async function openSticker(opts) {
-  const body = el('div', 'sticker-box');
-  const cv = el('canvas');
-  cv.id = 'stickerC';
-  cv.width = 300; cv.height = 300;
-  cv.style.width = '280px';
-  body.appendChild(cv);
-  const isQuest = opts.kind === 'quest';
-  const q = opts.q;
-  let payload;
-  if (isQuest) {
-    payload = deepLink('#q=' + q.id);
-  } else {
-    payload = deepLink('#u=' + st.user.id);
-  }
-  const paint = async () => {
-    const cx = cv.getContext('2d');
-    // фон
-    cx.fillStyle = '#fff'; cx.fillRect(0, 0, 300, 300);
-
-    // QR: скруглённые точки, уровень коррекции H, окно под лого
-    const m = drawQR(cx, payload, 18, 18, 264, { color: '#0f1115', logo: true });
-
-    // круг под логотип: белая подложка + фирменная заливка
-    cx.beginPath(); cx.arc(m.cx, m.cy, m.hole + m.scale * 0.5, 0, Math.PI * 2);
-    cx.fillStyle = '#fff'; cx.fill();
-    cx.beginPath(); cx.arc(m.cx, m.cy, m.hole, 0, Math.PI * 2);
-    cx.fillStyle = '#0f1115'; cx.fill();
-
-    // «21» внутри круга — размер от радиуса, чтобы не вылезал
-    cx.fillStyle = '#fff';
-    cx.font = '900 ' + Math.round(m.hole * 1.05) + 'px -apple-system, Arial, sans-serif';
-    cx.textAlign = 'center';
-    cx.textBaseline = 'middle';
-    cx.fillText('21', m.cx, m.cy + m.hole * 0.06);
-    cx.textAlign = 'left';
-    cx.textBaseline = 'alphabetic';
-  };
-  paint();
-  const tiles = el('div');
-  tiles.style.width = '100%';
-  const t1 = el('button', 'tile');
-  t1.innerHTML = '<span class="ti" style="background:var(--blue)">🖨</span>';
-  t1.appendChild(el('span', 'tt', 'Печать'));
-  t1.appendChild(el('span', 'ts', '60 мм, чёрно-белый'));
-  t1.appendChild(el('span', 'arr', '›'));
-  t1.addEventListener('click', () => {
-    const pz = $('#printZone');
-    pz.innerHTML = '';
-    pz.appendChild(imgTag(cv.toDataURL('image/png')));
-    window.print();
-  });
-  tiles.append(t1);
-  const tw = window.__tg;
-  if (tw && tw.shareToMedia) {
-    const t3 = el('button', 'tile');
-    t3.innerHTML = '<span class="ti" style="background:var(--violet)">✈</span>';
-    t3.appendChild(el('span', 'tt', 'Отправить стикер в чат'));
-    t3.appendChild(el('span', 'ts', 'картинкой через Telegram'));
-    t3.appendChild(el('span', 'arr', '›'));
-    t3.addEventListener('click', () => {
-      try {
-        cv.toBlob(blob => {
-          if (!blob) { toast('Не удалось', ''); return; }
-          try { tw.shareToMedia(blob, { caption: '21 · СКАНИРУЙ · ВОЗЬМИ · СДЕЛАЙ' }); }
-          catch (e) { toast('Не удалось', ''); }
-        }, 'image/png');
-      } catch (e) { toast('Не удалось', ''); }
-    });
-    tiles.appendChild(t3);
-  }
-  body.appendChild(tiles);
-  const dl = el('button', 'bigbtn', 'Скачать PNG');
-  dl.addEventListener('click', () => {
-    const a = el('a');
-    a.href = cv.toDataURL('image/png');
-    a.download = (isQuest ? 'sticker-q-' + q.id : 'sticker-21') + '.png';
-    a.click();
-    toast('Стикер скачан');
-  });
-  body.appendChild(dl);
-  openSheet('assets/ic_qr.png', 'Стикер с QR', body);
-}
-$('#btnHdrQR').addEventListener('click', () => openSticker({ kind: 'me' }));
 
 /* ================================================================
    ФОНД РАЙОНА
@@ -2480,7 +2022,7 @@ const KB = [
   ]},
   { id: 'repair', icon: 'qt_fix', title: 'ремонт', cards: [
     { t: 'Скамейка у 19-го', big: '2 доски', unit: 'оторваны, нужны саморезы',
-      bars: [['износ', 45]], act: '→ взять задачу со сканером QR' },
+      bars: [['износ', 45]], act: '→ взять задачу по ремонту' },
     { t: 'Шуруповёрт мастерской', big: '480 об/мин', unit: 'заряжаем по пятницам',
       bars: [['батарея', 55]], act: '→ инструмент — по записи' },
     { t: 'Домофон 3-го', big: '3 дня', unit: 'без звонка с понедельника',
@@ -2657,7 +2199,6 @@ function renderMe() {
   };
   mkRow('var(--green)', 'ic_plus.png', 'Сообщить о проблеме', 'заявка уходит на модерацию', openReport);
   mkRow('#ff9500', 'ic_book.png', 'Знания', 'вода, энергия, еда, ремонт', () => showScreen('scr-kb'));
-  mkRow('#8b5cf6', 'ic_qr.png', 'Стикер с QR', 'распечатать для двора', () => openSticker({ kind: 'me' }));
   mkRow('#3a3c40', 'ic_feed.png', 'Лента района', 'новости двора', () => showScreen('scr-feed'));
   if (u.isDev) mkRow('#007aff', 'ic_admin.png', 'Админ-панель', 'точки, посты, дела, проекты', () => showScreen('scr-admin'));
   mkRow('var(--red)', 'ic_power.png', 'Выйти из аккаунта', 'сессия Telegram на этом устройстве', () => {
@@ -2725,7 +2266,6 @@ $('#tileRules').addEventListener('click', () => {
     '</div></div>' +
     '<div class="aminor">Кворум достигается редко — голосуй осмысленно</div>');
 });
-$('#tileQR').addEventListener('click', () => openSticker({ kind: 'me' }));
 
 /* ================================================================
    АДМИН-ПАНЕЛЬ
@@ -3139,6 +2679,104 @@ function renderFundWallet() {
     b.appendChild(l);
   });
 }
+/* ---------------- выбор точки на карте (админка) ----------------
+   Метка синхронизирована с полями координат в обе стороны:
+   клик/перетаскивание по карте пишет в поля, ручной ввод двигает метку. */
+let pickMap = null, pickMark = null, pickInited = false;
+
+/** Читает координаты из полей. null, если введено не число. */
+function pickReadFields() {
+  const lat = parseFloat(($('#apLat').value || '').replace(',', '.'));
+  const lng = parseFloat(($('#apLng').value || '').replace(',', '.'));
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return [lat, lng];
+}
+
+/** Пишет координаты в поля (6 знаков ≈ 0.1 м — хватает для двора). */
+function pickWriteFields(coords) {
+  $('#apLat').value = coords[0].toFixed(6);
+  $('#apLng').value = coords[1].toFixed(6);
+  const hint = $('#apPickHint');
+  if (hint) hint.textContent = 'Метка: ' + coords[0].toFixed(5) + ', ' + coords[1].toFixed(5);
+}
+
+/** Двигает метку и центрирует карту. */
+function pickSetMark(coords, pan) {
+  if (!pickMap || !pickMark) return;
+  pickMark.geometry.setCoordinates(coords);
+  if (pan !== false) pickMap.panTo(coords, { duration: 200, flying: false });
+}
+
+function initPickMap() {
+  const box = $('#apPickMap');
+  if (!box || pickInited) {
+    // панель могли открыть повторно — просто обновим метку под поля
+    const c0 = pickReadFields();
+    if (c0 && pickMap) pickSetMark(c0);
+    return;
+  }
+  pickInited = true;
+
+  const start = pickReadFields() || CENTER;
+
+  loadYandex().then(ok => {
+    if (!ok) {
+      // без карты остаётся ручной ввод — не блокируем работу админа
+      box.style.display = 'none';
+      const hint = $('#apPickHint');
+      if (hint) hint.textContent = 'Карта недоступна — введи координаты вручную';
+      return;
+    }
+    ymaps.ready(() => {
+      pickMap = new ymaps.Map(box, { center: start, zoom: 17, controls: ['zoomControl'] },
+        { suppressMapOpenBlock: true });
+      pickMark = new ymaps.Placemark(start, {}, {
+        preset: 'islands#redDotIcon',
+        draggable: true,
+      });
+      pickMap.geoObjects.add(pickMark);
+      pickWriteFields(start);
+
+      // клик по карте — поставить метку
+      pickMap.events.add('click', e => {
+        const c = e.get('coords');
+        pickSetMark(c, false);
+        pickWriteFields(c);
+      });
+      // перетаскивание метки
+      pickMark.events.add('dragend', () => {
+        pickWriteFields(pickMark.geometry.getCoordinates());
+      });
+    });
+  });
+
+  // ручной ввод двигает метку
+  const onInput = () => {
+    const c = pickReadFields();
+    if (c) pickSetMark(c);
+  };
+  $('#apLat').addEventListener('change', onInput);
+  $('#apLng').addEventListener('change', onInput);
+
+  // «моё местоположение»
+  const btn = $('#apPickHere');
+  if (btn) btn.addEventListener('click', () => {
+    if (!navigator.geolocation) { toast('Геолокация недоступна', ''); return; }
+    btn.disabled = true; btn.textContent = 'Определяем…';
+    navigator.geolocation.getCurrentPosition(pos => {
+      const c = [pos.coords.latitude, pos.coords.longitude];
+      pickSetMark(c);
+      pickWriteFields(c);
+      btn.disabled = false; btn.textContent = 'Моё местоположение';
+      toast('Метка — на твоей точке');
+    }, () => {
+      btn.disabled = false; btn.textContent = 'Моё местоположение';
+      toast('Не удалось определить место', '');
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+}
+
 function renderAdmin() {
   renderPayouts();
   if (!rateReady()) gramRate();
@@ -3198,7 +2836,8 @@ function renderAdmin() {
     });
     at.appendChild(b);
   });
-  if (!$('#apLat').value) { $('#apLat').value = String(CENTER[0].toFixed(4)); $('#apLng').value = String(CENTER[1].toFixed(4)); }
+  if (!$('#apLat').value) { $('#apLat').value = String(CENTER[0].toFixed(6)); $('#apLng').value = String(CENTER[1].toFixed(6)); }
+  initPickMap();
   // лента (управление)
   const afl = $('#apFeedList');
   afl.innerHTML = '';
@@ -3362,7 +3001,7 @@ function refreshAll() {
     if (on.id === 'scr-kb') renderKB();
     if (on.id === 'scr-feed') renderFeed();
     if (on.id === 'scr-admin') renderAdmin();
-    if (on.id === 'scr-map') refreshStaticList();
+    if (on.id === 'scr-map') { refreshStaticList(); refreshMarkers(); }
   }
 }
 
@@ -3486,7 +3125,6 @@ function tryDeepLink() {
   const mPay = h.match(/#pay=(\w+)/);
   setTimeout(() => {
     if (mQ) openQuest(mQ[1]);
-    else if (mU) openSticker({ kind: 'me' });
     else if (mPay && st.user && st.user.isDev) {
       showScreen('scr-admin');
       const tb = document.querySelector('.atab[data-apt="payout"]');
