@@ -11,10 +11,24 @@
 ## Быстрый старт
 
 ```bash
+# 1) бот-хост с ключом TON API (из корня репозитория) — он же отдаёт релей /api/tonapi
+TONAPI_KEY='ваш-ключ' PORT=8080 node http-wrapper.js
+
+# 2) фронтенд (в отдельном терминале)
 cd wallet-app
 npm install
 npm run dev          # → http://localhost:5173
 ```
+
+Vite проксирует `/api/tonapi` на `http://localhost:8080`, так что путь в
+разработке ровно тот же, что в проде. Если бот-хост на другом адресе:
+
+```bash
+BOT_HOST=https://ваш-бот-хост npm run dev
+```
+
+Без запущенного бот-хоста интерфейс поднимется, но баланс и история покажут
+ошибку связи — это ожидаемо.
 
 Сборка и локальный просмотр продакшен-версии:
 
@@ -39,7 +53,7 @@ node scripts/render-test.mjs # рендер компонентов
 ```
 wallet-app/
 ├─ index.html                    # шелл + Telegram WebApp SDK
-├─ vite.config.ts                # base './', dev-прокси /tonapi
+├─ vite.config.ts                # base './', dev-прокси /api/tonapi → бот-хост
 ├─ public/
 │  └─ tonconnect-manifest.json   # манифест TON Connect (ПРАВИТЬ ПОД СВОЙ ДОМЕН)
 └─ src/
@@ -59,7 +73,7 @@ wallet-app/
    │  └─ useToasts.ts            # очередь уведомлений
    └─ lib/
       ├─ config.ts               # все настройки, читаются из .env
-      ├─ tonapi.ts               # клиент tonapi.io
+      ├─ tonapi.ts               # клиент TON API (через релей бот-хоста)
       ├─ cell.ts                 # BOC-энкодер для комментария
       ├─ format.ts               # суммы (bigint), адреса, даты
       ├─ storage.ts              # кеш адреса в localStorage
@@ -98,9 +112,39 @@ wallet-app/
 |---|---|
 | `VITE_FUND_ADDRESS` | адрес фонда — получатель донатов |
 | `VITE_MANIFEST_URL` | URL манифеста, если он на другом домене |
-| `VITE_TONAPI_BASE` | база API; `/tonapi` — ходить через прокси |
-| `VITE_TONAPI_KEY` | ключ tonapi (**попадает в бандл** — только для локальной разработки) |
+| `VITE_TONAPI_BASE` | база API; по умолчанию `/api/tonapi` (релей бот-хоста) |
 | `VITE_TWA_RETURN_URL` | куда вернуть пользователя после кошелька |
+
+> Все `VITE_*` попадают в браузерный бандл — **секретов среди них быть не должно**.
+
+### Ключ TON API — только на бот-хосте
+
+Переменная называется **`TONAPI_KEY`** и задаётся в окружении бот-хоста
+(там же, где `TELEGRAM_BOT_TOKEN`):
+
+```bash
+TELEGRAM_BOT_TOKEN='123:ABC...' TONAPI_KEY='ваш-ключ' PORT=8080 node http-wrapper.js
+```
+
+Клиент ходит на `/api/tonapi/...` **без ключа** — заголовок `Authorization`
+подставляет релей в `http-wrapper.js`. Ключ не попадает ни в бандл, ни в
+DevTools пользователя.
+
+Релей устроен так:
+
+- пропускает только два пути — `v2/accounts/{addr}` и
+  `v2/blockchain/accounts/{addr}/transactions`; всё остальное → `400`,
+  чтобы его нельзя было использовать как открытый прокси;
+- из query оставляет только `limit`;
+- кеширует ответы на 4 секунды: при опросе раз в 5 секунд нагрузка на ключ
+  не растёт с числом одновременных зрителей;
+- при обрыве связи с tonapi отдаёт последний удачный ответ (`X-Cache: STALE`),
+  а не ошибку.
+
+Дополнительно можно задать `TONAPI_BASE` (по умолчанию `https://tonapi.io`) —
+пригодится для тестового стенда.
+
+Ключ не обязателен: без него релей работает на бесплатном лимите tonapi.
 
 ### Манифест TON Connect — обязательный шаг
 
@@ -118,18 +162,6 @@ wallet-app/
 
 Файл должен отдаваться публично, по HTTPS и с `Access-Control-Allow-Origin: *`.
 
-### Лимиты tonapi
-
-По умолчанию запросы идут прямо на `https://tonapi.io` (CORS разрешён), ключ не нужен —
-этого хватает для нескольких пользователей. При росте нагрузки возьмите ключ на
-[tonconsole.com](https://tonconsole.com) и **не кладите его в бандл**: поднимите прокси
-и укажите `VITE_TONAPI_BASE=/tonapi`. Dev-прокси уже описан в `vite.config.ts` и
-подставляет `TONAPI_KEY` из окружения:
-
-```bash
-TONAPI_KEY=xxx npm run dev
-```
-
 ---
 
 ## Деплой
@@ -145,10 +177,32 @@ npm run build
 
 В манифесте укажите полный URL с подпутём: `https://USER.github.io/21app/wallet/`.
 
-### Свой node-хост
+### Свой node-хост (рекомендуется)
 
-`dist/` — статика, отдавайте любым сервером. Главное — чтобы
-`/tonconnect-manifest.json` был доступен публично.
+Кладём сборку рядом с `http-wrapper.js` — тогда фронтенд и релей `/api/tonapi`
+живут на одном origin, и `VITE_TONAPI_BASE` настраивать не нужно:
+
+```bash
+cd wallet-app && npm run build
+# dist/ → положить в папку, которую отдаёт бот-хост (например, /wallet)
+
+TELEGRAM_BOT_TOKEN='123:ABC...' TONAPI_KEY='ваш-ключ' PORT=8080 node http-wrapper.js
+```
+
+Главное — чтобы `/tonconnect-manifest.json` был доступен публично.
+
+### Фронтенд и бот-хост на разных доменах
+
+Если сборка лежит на GitHub Pages, а релей — на отдельном хосте, укажите
+полный URL релея и разрешите CORS для домена фронтенда:
+
+```bash
+# сборка
+VITE_TONAPI_BASE=https://ваш-бот-хост/api/tonapi npm run build
+
+# бот-хост
+BOT_ALLOW_ORIGIN='https://USER.github.io' TONAPI_KEY='ваш-ключ' node http-wrapper.js
+```
 
 ### Telegram Mini App
 

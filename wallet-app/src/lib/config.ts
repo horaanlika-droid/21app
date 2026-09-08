@@ -23,18 +23,19 @@ export const MANIFEST_URL: string =
 /**
  * База TON API.
  *
- * По умолчанию бьём в tonapi.io напрямую из браузера — CORS там разрешён,
- * и это работает везде, включая GitHub Pages без своего бэкенда.
+ * По умолчанию — релей бот-хоста `/api/tonapi` (реализован в http-wrapper.js).
+ * Ключ `TONAPI_KEY` живёт в env бот-хоста и в клиентский бандл НЕ попадает:
+ * сервер сам подставляет заголовок Authorization.
  *
- * Если нужен ключ (выше лимиты) — не кладите его в бандл: поднимите прокси и
- * укажите VITE_TONAPI_BASE=/tonapi, тогда запросы пойдут через сервер
- * (dev-прокси уже настроен в vite.config.ts и подставляет TONAPI_KEY).
+ * Если приложение и бот-хост на разных доменах (например, GitHub Pages +
+ * отдельный хост) — укажите полный URL релея:
+ *   VITE_TONAPI_BASE=https://ваш-бот-хост/api/tonapi
+ *
+ * Значение 'https://tonapi.io' тоже допустимо — это прямые вызовы из браузера
+ * без ключа, на бесплатном лимите.
  */
 export const TONAPI_BASE: string =
-  import.meta.env.VITE_TONAPI_BASE ?? 'https://tonapi.io';
-
-/** Ключ tonapi. ВНИМАНИЕ: в бандле он виден всем — для продакшена используйте прокси. */
-export const TONAPI_KEY: string | undefined = import.meta.env.VITE_TONAPI_KEY;
+  import.meta.env.VITE_TONAPI_BASE ?? '/api/tonapi';
 
 /** Интервал автообновления баланса, мс (по ТЗ — 5 секунд). */
 export const REFRESH_INTERVAL_MS = 5000;

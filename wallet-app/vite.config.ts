@@ -10,25 +10,22 @@ import react from '@vitejs/plugin-react';
  * server.host: '0.0.0.0' + allowedHosts: true — dev-сервер должен принимать
  * запросы с внешнего превью-домена, иначе Vite отвечает "Blocked request".
  *
- * /tonapi — dev-прокси на tonapi.io: браузер зовёт относительный путь, а ключ
- * TONAPI_KEY (если задан) подставляется на сервере и не попадает в бандл.
+ * /api/tonapi — dev-прокси. По умолчанию ведёт на локальный бот-хост
+ * (node http-wrapper.js на :8080), у которого в env лежит TONAPI_KEY.
+ * Адрес можно переопределить: BOT_HOST=https://ваш-хост npm run dev
+ *
+ * Так в разработке путь ровно тот же, что в проде, — /api/tonapi/... —
+ * и ключ ни в одном режиме не попадает в браузер.
  */
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
+  const botHost = process.env.BOT_HOST || 'http://localhost:8080';
 
   const tonapiProxy: Record<string, ProxyOptions> = {
-    '/tonapi': {
-      target: 'https://tonapi.io',
+    '/api/tonapi': {
+      target: botHost,
       changeOrigin: true,
-      secure: true,
-      rewrite: (p) => p.replace(/^\/tonapi/, ''),
-      configure: (proxy) => {
-        const key = process.env.TONAPI_KEY;
-        if (!key) return;
-        proxy.on('proxyReq', (proxyReq) => {
-          proxyReq.setHeader('Authorization', `Bearer ${key}`);
-        });
-      },
+      secure: !botHost.startsWith('http://'),
     },
   };
 

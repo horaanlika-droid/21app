@@ -51,6 +51,78 @@ function readBody(req, limit) {
    Приложение (Telegram Mini App) вызывает методы БЕЗ токена; мы проксируем на
    api.telegram.org. Разрешены только методы, нужные приложению. */
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+
+/* ---------- TON API relay: GET /api/tonapi/<path> ----------
+   Ключ живёт ТОЛЬКО здесь, в env бот-хоста:  TONAPI_KEY=... node http-wrapper.js
+   Клиент (кошелёк района) ходит на /api/tonapi/... без ключа — мы подставляем
+   Authorization и проксируем на tonapi.io. Без ключа тоже работает: у tonapi
+   есть бесплатный лимит, просто ниже.
+
+   Разрешены только два пути, нужных приложению (баланс и транзакции), — чтобы
+   релей нельзя было использовать как открытый прокси к произвольному API. */
+const TONAPI_KEY = process.env.TONAPI_KEY || '';
+const TONAPI_BASE = process.env.TONAPI_BASE || 'https://tonapi.io';
+const TONAPI_ALLOWED = [
+  /^v2\/accounts\/[A-Za-z0-9_:-]{48,68}$/,
+  /^v2\/blockchain\/accounts\/[A-Za-z0-9_:-]{48,68}\/transactions$/,
+];
+/* Микрокеш ответов: клиенты опрашивают баланс раз в 5 сек, и без кеша каждый
+   зритель умножал бы нагрузку на лимит ключа. TTL чуть меньше периода опроса. */
+const __tonapiCache = new Map();
+const TONAPI_TTL = 4000;
+
+async function handleTonApi(req, res, rest) {
+  const cors = {
+    'Access-Control-Allow-Origin': BOT_ALLOW_ORIGIN,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (req.method === 'OPTIONS') return send(res, 204, '', cors);
+  if (req.method !== 'GET') return send(res, 405, '', cors);
+
+  const qIndex = rest.indexOf('?');
+  const pathOnly = qIndex >= 0 ? rest.slice(0, qIndex) : rest;
+  const query = qIndex >= 0 ? rest.slice(qIndex) : '';
+
+  if (!TONAPI_ALLOWED.some(re => re.test(pathOnly))) {
+    res.writeHead(400, Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, cors));
+    return res.end(JSON.stringify({ error: 'path not allowed' }));
+  }
+  // из query пропускаем только limit — остальное отбрасываем
+  const limitMatch = query.match(/[?&]limit=(\d{1,3})/);
+  const safeQuery = limitMatch ? '?limit=' + limitMatch[1] : '';
+  const target = TONAPI_BASE + '/' + pathOnly + safeQuery;
+
+  const hit = __tonapiCache.get(target);
+  if (hit && Date.now() - hit.ts < TONAPI_TTL) {
+    res.writeHead(200, Object.assign(
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Cache': 'HIT' }, cors));
+    return res.end(hit.body);
+  }
+
+  try {
+    const headers = { Accept: 'application/json' };
+    if (TONAPI_KEY) headers.Authorization = 'Bearer ' + TONAPI_KEY;
+    const r = await fetch(target, { headers, signal: AbortSignal.timeout(15000) });
+    const text = await r.text();
+    if (r.ok) {
+      __tonapiCache.set(target, { ts: Date.now(), body: text });
+      if (__tonapiCache.size > 50) __tonapiCache.delete(__tonapiCache.keys().next().value);
+    }
+    res.writeHead(r.status, Object.assign(
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Cache': 'MISS' }, cors));
+    res.end(text);
+  } catch (e) {
+    // отдаём протухший кеш, если он есть: лучше слегка старые данные, чем ошибка
+    if (hit) {
+      res.writeHead(200, Object.assign(
+        { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Cache': 'STALE' }, cors));
+      return res.end(hit.body);
+    }
+    res.writeHead(502, Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, cors));
+    res.end(JSON.stringify({ error: 'tonapi unavailable' }));
+  }
+}
 const BOT_ALLOWED = new Set(['getMe', 'sendMessage', 'getUpdates', 'setMyCommands', 'deleteWebhook', 'getWebhookInfo']);
 const BOT_ALLOW_ORIGIN = process.env.BOT_ALLOW_ORIGIN || '*'; // свой домен: https://example.pages.dev
 const botCors = {
@@ -95,6 +167,12 @@ const server = http.createServer((req, res) => {
     if (req.method === 'OPTIONS') return send(res, 204, '', botCors);
     if (req.method !== 'POST') return send(res, 405, '', botCors);
     return handleBotApi(req, res, urlPath.slice('/api/bot/'.length));
+  }
+
+  // TON API релей (ключ — только в env бот-хоста, см. TONAPI_KEY)
+  if (urlPath.indexOf('/api/tonapi/') === 0) {
+    const rest = req.url.slice(req.url.indexOf('/api/tonapi/') + '/api/tonapi/'.length);
+    return handleTonApi(req, res, rest);
   }
 
   // ── выплаты GRAM ──

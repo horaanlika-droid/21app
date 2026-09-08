@@ -9,7 +9,7 @@
  * копить «висящие» ответы, которые перезапишут свежие данные.
  */
 
-import { TONAPI_BASE, TONAPI_KEY } from './config';
+import { TONAPI_BASE } from './config';
 import type { Donation, DonationStats } from './types';
 
 /** Ошибка API с кодом ответа — UI по нему различает 429 и остальное. */
@@ -24,8 +24,8 @@ export class TonApiError extends Error {
 }
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
+  // Ключа здесь нет и быть не должно: его подставляет релей бот-хоста.
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (TONAPI_KEY) headers.Authorization = `Bearer ${TONAPI_KEY}`;
 
   let response: Response;
   try {

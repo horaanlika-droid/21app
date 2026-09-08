@@ -93,8 +93,24 @@ TELEGRAM_BOT_TOKEN='123:ABC...' PORT=8080 node http-wrapper.js
 | env | что |
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | токен бота — только здесь, в коде клиента его нет |
+| `TONAPI_KEY` | ключ [tonapi.io](https://tonconsole.com) для релея `/api/tonapi` — тоже только здесь |
+| `TONAPI_BASE` | база TON API (по умолчанию `https://tonapi.io`) |
 | `PORT` | порт (хостинги отдают свой) |
 | `BOT_ALLOW_ORIGIN` | CORS для чужого фронтенда (по умолчанию `*`) |
+
+### Релей TON API: `GET /api/tonapi/<путь>`
+
+Кошелёк района (`wallet-app/`) читает баланс и транзакции через этот релей,
+чтобы ключ не попадал в браузер:
+
+```bash
+TELEGRAM_BOT_TOKEN='123:ABC...' TONAPI_KEY='ваш-ключ' PORT=8080 node http-wrapper.js
+```
+
+Разрешены только `v2/accounts/{addr}` и `v2/blockchain/accounts/{addr}/transactions`
+(остальное → 400, чтобы релей не стал открытым прокси); из query проходит только
+`limit`. Ответы кешируются на 4 секунды, при недоступности tonapi отдаётся
+последний удачный (`X-Cache: STALE`). Без `TONAPI_KEY` работает на бесплатном лимите.
 
 Хостинг должен запускать **`npm start`** (из `package.json`). На случай автодетекта
 «первого .js» в корне добавлен шим `index.js` (он просто требует `http-wrapper.js`), а
