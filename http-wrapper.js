@@ -12,6 +12,30 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = __dirname;
+
+/* ---------- .env: секреты только из файла рядом с сервером ----------
+   Формат KEY=VALUE, строки с # — комментарии. Файл в .gitignore, поэтому
+   токены не попадают в репозиторий. Реальное окружение (env хостинга)
+   имеет приоритет: заданные снаружи переменные не перезатираем. */
+(function loadDotEnv() {
+  try {
+    const raw = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
+    for (const line of raw.split('\n')) {
+      const s = line.trim();
+      if (!s || s.startsWith('#')) continue;
+      const eq = s.indexOf('=');
+      if (eq < 1) continue;
+      const key = s.slice(0, eq).trim();
+      let val = s.slice(eq + 1).trim();
+      // снимаем кавычки, если значение обёрнуто
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (!(key in process.env)) process.env[key] = val;
+    }
+  } catch (e) { /* .env нет — работаем на переменных окружения */ }
+})();
+
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 
 const MIME = {

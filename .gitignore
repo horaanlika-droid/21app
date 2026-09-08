@@ -1,3 +1,15 @@
 __pycache__/
 *.pyc
 config.js
+
+# ── секреты: НИКОГДА не коммитим ──
+# токены и ключи живут только в локальных .env, вне репозитория
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+
+# сборки и зависимости
+node_modules/
+dist/
