@@ -174,7 +174,7 @@ async function handleBotApi(req, res, method) {
 const PUBLIC_FILE = /^\/(index\.html|sw\.js|manifest\.webmanifest|tonconnect-manifest\.json|favicon\.ico)$/;
 const ASSET_FILE = /^\/assets\/[A-Za-z0-9_\/. -]+\.(png|jpe?g|gif|svg|webp|css|js|json|woff2)$/;
 
-let __rateCache = { v: 0, ts: 0 };
+let __rateCache = { v: 0, rub: 0, usd: 0, ts: 0 };
 const __payLimit = new Map();
 /** Антиспам заявок: ключ (id жителя или ip) → отметки времени. */
 const __reqLimit = new Map();
@@ -236,17 +236,41 @@ const server = http.createServer((req, res) => {
 
   // ── выплаты GRAM ──
   // курс Toncoin→RUB (публичный, кэш 10 мин)
+  /* Курс TON → рубли и доллары. Кэш 10 минут: курс меняется медленно,
+     а лимиты бесплатного API — нет. При недоступности источника отдаём
+     последнее известное значение (stale), чтобы в приложении не мигал прочерк. */
   if (urlPath === '/api/rate') {
     (async () => {
       const now = Date.now();
-      if (__rateCache.v > 0 && now - __rateCache.ts < 600000) return sendJson(res, 200, { ok: true, gram_rub: __rateCache.v });
+      const fresh = __rateCache.rub > 0 && now - __rateCache.ts < 600000;
+      if (fresh) {
+        return sendJson(res, 200, {
+          ok: true, ton_rub: __rateCache.rub, ton_usd: __rateCache.usd,
+          gram_rub: __rateCache.rub, ts: __rateCache.ts, cached: true,
+        }, apiCors);
+      }
       try {
-        const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub');
+        const r = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub,usd',
+          { signal: AbortSignal.timeout(12000) });
         const j = await r.json();
-        const v = j && j['the-open-network'] && j['the-open-network'].rub;
-        if (v > 0) { __rateCache = { v, ts: now }; return sendJson(res, 200, { ok: true, gram_rub: v }); }
-        sendJson(res, 200, { ok: false });
-      } catch (e) { sendJson(res, 200, { ok: false }); }
+        const t = j && j['the-open-network'];
+        const rub = t && t.rub, usd = t && t.usd;
+        if (rub > 0) {
+          __rateCache = { rub, usd: usd || 0, ts: now, v: rub };
+          return sendJson(res, 200, { ok: true, ton_rub: rub, ton_usd: usd || 0, gram_rub: rub, ts: now }, apiCors);
+        }
+        throw new Error('bad payload');
+      } catch (e) {
+        // отдаём протухшее значение, если оно есть — лучше, чем ничего
+        if (__rateCache.rub > 0) {
+          return sendJson(res, 200, {
+            ok: true, ton_rub: __rateCache.rub, ton_usd: __rateCache.usd,
+            gram_rub: __rateCache.rub, ts: __rateCache.ts, stale: true,
+          }, apiCors);
+        }
+        sendJson(res, 200, { ok: false }, apiCors);
+      }
     })();
     return;
   }
