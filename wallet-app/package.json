@@ -1,0 +1,28 @@
+{
+  "name": "21-ton-wallet",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "21 — кошелёк района: TON Connect 2.0, донаты в фонд, баланс и статистика",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false"
+  },
+  "dependencies": {
+    "@tonconnect/ui-react": "^3.0.2",
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@ton/core": "^0.63.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.63.0",
+    "react-dom": "^19.2.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

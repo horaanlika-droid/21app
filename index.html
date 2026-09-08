@@ -1078,9 +1078,9 @@ function orderPrice(type, desc) {
 }
 
 /* ---------------- состояние ---------------- */
-const LS_KEY = 'os21_v4';
+const LS_KEY = 'os21_v5';
 const SEED = () => ({
-  v: 4,
+  v: 5,
   bot: { chatId: ADMIN_CHAT, queue: [] },
   user: null,
   quests: [
@@ -1095,19 +1095,19 @@ const SEED = () => ({
   ],
   requests: [],
   projects: [
-    { id: 'p1', title: 'Лампы на тропе', urg: 5, goal: 1500, raised: 900, icon: 'en_energy' },
-    { id: 'p2', title: 'Инструмент во двор', urg: 3, goal: 4200, raised: 1100, icon: 'qt_fix' },
-    { id: 'p3', title: 'Фильтр для колонки', urg: 4, goal: 2000, raised: 2000, icon: 'en_water' },
-    { id: 'p4', title: 'Холодильник добра', urg: 5, goal: 7000, raised: 2400, icon: 'qt_help' },
+    { id: 'p1', title: 'Лампы на тропе', urg: 5, goal: 1500, raised: 0, icon: 'en_energy' },
+    { id: 'p2', title: 'Инструмент во двор', urg: 3, goal: 4200, raised: 0, icon: 'qt_fix' },
+    { id: 'p3', title: 'Фильтр для колонки', urg: 4, goal: 2000, raised: 0, icon: 'en_water' },
+    { id: 'p4', title: 'Холодильник добра', urg: 5, goal: 7000, raised: 0, icon: 'qt_help' },
   ],
-  fund: { bank: 18400, goal: 40000, myContrib: 0, lastDist: null },
+  fund: { bank: 0, goal: 40000, myContrib: 0, lastDist: null },
   payouts: [],
   community: 0,
   log: [],
   cases: [
-    { id: 'c1', title: 'Граффити на трансформаторной', desc: 'Согласовать эскиз с пиксель-цветком.', opts: [{ id: 'a', label: 'За', votes: 11 }, { id: 'b', label: 'Против', votes: 1 }], my: null, days: 2 },
-    { id: 'c2', title: 'Куда 5 000 ₽ из фонда', desc: 'Лампы на тропе или инструмент в мастерскую двора.', opts: [{ id: 'a', label: 'Лампы', votes: 5 }, { id: 'b', label: 'Инструмент', votes: 6 }], my: null, days: 3 },
-    { id: 'c3', title: 'Парковка на газоне у 12-го', desc: 'Ставить конусы и клумбу или оставить как есть?', opts: [{ id: 'a', label: 'Клумба', votes: 7 }, { id: 'b', label: 'Конусы', votes: 0 }, { id: 'c', label: 'Оставить', votes: 3 }], my: null, days: 5 },
+    { id: 'c1', title: 'Граффити на трансформаторной', desc: 'Согласовать эскиз с пиксель-цветком.', opts: [{ id: 'a', label: 'За', votes: 0 }, { id: 'b', label: 'Против', votes: 0 }], my: null, days: 2 },
+    { id: 'c2', title: 'Куда 5 000 ₽ из фонда', desc: 'Лампы на тропе или инструмент в мастерскую двора.', opts: [{ id: 'a', label: 'Лампы', votes: 0 }, { id: 'b', label: 'Инструмент', votes: 0 }], my: null, days: 3 },
+    { id: 'c3', title: 'Парковка на газоне у 12-го', desc: 'Ставить конусы и клумбу или оставить как есть?', opts: [{ id: 'a', label: 'Клумба', votes: 0 }, { id: 'b', label: 'Конусы', votes: 0 }, { id: 'c', label: 'Оставить', votes: 0 }], my: null, days: 5 },
   ],
   feed: [
     { id: uid(), author: 'район', text: 'Мастерская двора открыта: инструмент — по записи у старшего по корпусу.', img: 'assets/qt_fix.png', ts: Date.now() - 86400000 * 2 },
@@ -1118,7 +1118,7 @@ const SEED = () => ({
 });
 let st;
 try { st = JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch (e) { st = null; }
-if (!st || st.v !== 4) st = SEED();
+if (!st || st.v !== 5) st = SEED();
 if (!st.bot) st.bot = { queue: [] };
 if (st.bot.chatId == null) st.bot.chatId = ADMIN_CHAT;   // старые профили без чата → админ-чат
 const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(st)); } catch (e) {} };
@@ -2981,10 +2981,6 @@ function renderOnb() {
   $('#onbNext').textContent = onbIdx === 2 ? 'Войти в 21' : 'Дальше';
   if (onbIdx === 0) {
     box.appendChild(imgTag('assets/qt_help.png'));
-    const c = el('div', 'onb-chip', 'Уже ');
-    c.appendChild(el('b', null, '21 348'));
-    c.appendChild(document.createTextNode(' задач решено'));
-    box.appendChild(c);
     box.appendChild(el('h2', null, 'Привет, сосед'));
     box.appendChild(el('p', null, '«21» — операционная система района: карта дел, задачи во дворе, общий фонд и суд соседей.'));
   } else if (onbIdx === 1) {
@@ -3062,7 +3058,7 @@ function doLogin(tu) {
     ton: '',
     isDev: !tu,
     avatar: { head: 0, body: 0, tint: '#999999', custom: null },
-    xp: 0, karma: 12, wallet: 500,
+    xp: 0, karma: 0, wallet: 0,
     stats: { done: 0, donated: 0, votes: 0, read: 0 },
     onboarded: false,
   };

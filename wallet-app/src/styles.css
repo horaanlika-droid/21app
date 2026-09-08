@@ -1,0 +1,553 @@
+/* ============================================================
+   21 · кошелёк района — тёмная тема в стиле Telegram.
+   Палитра берётся из Telegram WebApp (--tg-theme-*), с фолбэком
+   на стандартные цвета тёмной темы Telegram Desktop/iOS.
+   ============================================================ */
+
+:root {
+  --bg: var(--tg-theme-bg-color, #17212b);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #232e3c);
+  --card: #1d2733;
+  --text: var(--tg-theme-text-color, #f5f5f5);
+  --hint: var(--tg-theme-hint-color, #7d8b99);
+  --link: var(--tg-theme-link-color, #6ab3f3);
+  --accent: var(--tg-theme-button-color, #2ea6ff);
+  --accent-ink: var(--tg-theme-button-text-color, #ffffff);
+  --green: #4dd07f;
+  --red: #ff5c5c;
+  --stroke: rgba(255, 255, 255, 0.08);
+  --radius: 14px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui,
+    'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* ------------------------------ layout ------------------------------ */
+
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 14px calc(28px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.page__head {
+  padding: 4px 2px 2px;
+}
+
+.page__title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.page__sub {
+  margin: 2px 0 0;
+  color: var(--hint);
+  font-size: 13.5px;
+}
+
+.page__foot {
+  margin-top: 4px;
+  text-align: center;
+  color: var(--hint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ------------------------------- card ------------------------------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.muted {
+  margin: 0;
+  color: var(--hint);
+  font-size: 13.5px;
+}
+
+.muted--tight {
+  margin-top: -6px;
+}
+
+.error-text {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
+
+/* ------------------------------ status ------------------------------ */
+
+.status {
+  margin: 3px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hint);
+  flex: none;
+}
+
+.status--on .status__dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(77, 208, 127, 0.16);
+}
+
+.status--off .status__dot {
+  background: var(--red);
+}
+
+/* ------------------------------ balance ----------------------------- */
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.balance__label {
+  font-size: 12.5px;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.balance__value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.25s ease;
+}
+
+.balance__value--pulse {
+  color: var(--green);
+}
+
+.balance__hint {
+  font-size: 12px;
+  color: var(--hint);
+}
+
+.fund-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 12px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.fund-balance__value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fund-balance__label {
+  font-size: 12.5px;
+  color: var(--hint);
+}
+
+/* ------------------------------- stats ------------------------------ */
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat__value {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stat__label {
+  font-size: 12px;
+  color: var(--hint);
+}
+
+/* ------------------------------ presets ----------------------------- */
+
+.presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.preset {
+  appearance: none;
+  border: 1px solid var(--stroke);
+  background: var(--bg-secondary);
+  color: var(--text);
+  border-radius: 11px;
+  padding: 10px 4px;
+  font-size: 14px;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.preset:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.preset--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.preset:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ------------------------------- field ------------------------------ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: 12.5px;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field__optional {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.field__wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--stroke);
+  border-radius: 11px;
+  padding: 0 12px;
+}
+
+.field__wrap:focus-within {
+  border-color: var(--accent);
+}
+
+.field__input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  /* 16px — иначе iOS зумит страницу при фокусе на поле */
+  font-size: 16px;
+  padding: 12px 0;
+}
+
+.field__input::placeholder {
+  color: var(--hint);
+}
+
+.field__suffix {
+  color: var(--hint);
+  font-size: 14px;
+  font-weight: 600;
+  flex: none;
+}
+
+.field__counter {
+  align-self: flex-end;
+  font-size: 11.5px;
+  color: var(--hint);
+}
+
+/* ------------------------------ buttons ----------------------------- */
+
+.btn {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn--ghost {
+  background: var(--bg-secondary);
+  color: var(--text);
+  border: 1px solid var(--stroke);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn__mono {
+  font-family: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+/* ------------------------------ history ----------------------------- */
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid var(--stroke);
+}
+
+.history__row:first-child {
+  border-top: none;
+}
+
+.history__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history__from {
+  font-family: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history__comment {
+  font-size: 13.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.history__time {
+  font-size: 12px;
+  color: var(--hint);
+}
+
+.history__amount {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: none;
+}
+
+.badge {
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: rgba(46, 166, 255, 0.14);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+/* ------------------------------ toasts ------------------------------ */
+
+.toasts {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 536px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #2a3543;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast__icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.toast__icon--success {
+  background: var(--green);
+}
+
+.toast__icon--error {
+  background: var(--red);
+}
+
+.toast__icon--info {
+  background: var(--accent);
+}
+
+.toast__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------- адаптивность --------------------------- */
+
+@media (max-width: 360px) {
+  .presets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .balance__value {
+    font-size: 23px;
+  }
+
+  .fund-balance__value {
+    font-size: 25px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
