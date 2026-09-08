@@ -203,11 +203,12 @@ class AdminBot {
       return;
     }
 
-    const text = (msg.text || '').trim();
+    // фото/подпись: Telegram кладёт текст в caption, а не в text
+    const text = (msg.text || msg.caption || '').trim();
 
     // активный пошаговый диалог перехватывает ввод (кроме команд)
     const flow = this.flows.get(msg.chat.id);
-    if (flow && !text.startsWith('/')) return this.onFlowInput(msg, flow);
+    if (flow && !text.startsWith('/')) return this.onFlowInput(msg, flow, text);
 
     if (text.startsWith('/')) {
       const cmd = text.split(/[\s@]/)[0].slice(1).toLowerCase();
@@ -265,16 +266,19 @@ class AdminBot {
       'Заданий активно: <b>' + s.tasksActive + '</b>' +
       (s.tasksDoing ? ' · в работе ' + s.tasksDoing : '') +
       (s.tasksDone ? ' · сделано ' + s.tasksDone : '') + '\n' +
+      (s.tasksVerify ? '⚠️ Ждут проверки: <b>' + s.tasksVerify + '</b>\n' : '') +
       'Заявок на модерации: <b>' + s.requests + '</b>\n' +
       'В блеклисте: <b>' + s.blacklist + '</b>\n' +
       'Фонд обещал по активным: <b>' + fmtR(s.rewardActive) + '</b>';
 
     const kb = { inline_keyboard: [
       [{ text: '➕ Создать задание', callback_data: 'new' }],
+      [{ text: '🔍 Отчёты' + (s.tasksVerify ? ' (' + s.tasksVerify + ')' : ''), callback_data: 'reports' }],
       [{ text: '📋 Задания (' + s.tasksActive + ')', callback_data: 'tasks:active:0' },
        { text: '📨 Заявки' + (s.requests ? ' (' + s.requests + ')' : ''), callback_data: 'queue' }],
       [{ text: '💰 Цены', callback_data: 'prices' },
        { text: '🚫 Блеклист (' + s.blacklist + ')', callback_data: 'bl' }],
+      [{ text: '📣 Опубликовать в ленту', callback_data: 'post' }],
       [{ text: '📊 Сводка', callback_data: 'stats' },
        { text: '🧾 Журнал', callback_data: 'log' }],
     ] };
@@ -336,6 +340,8 @@ class AdminBot {
       'Статус: ' + t.status + (t.takenBy ? ' (' + esc(t.takenBy) + ')' : '') + '\n' +
       'Координаты: ' + Number(t.x).toFixed(4) + ', ' + Number(t.y).toFixed(4) + '\n' +
       'Автор: ' + esc(t.author) + '\n' +
+      (t.photo ? '📷 фото приложено\n' : '') +
+      (t.report ? '\n<b>Отчёт исполнителя:</b>\n<i>' + esc(t.report) + '</i>\n' : '') +
       '<code>#' + shortId(t.id) + '</code>';
 
     const kb = { reply_markup: { inline_keyboard: [
@@ -343,6 +349,7 @@ class AdminBot {
        { text: '📝 Название', callback_data: 'edit:title:' + t.id }],
       [{ text: '📄 Описание', callback_data: 'edit:desc:' + t.id },
        { text: '📍 Координаты', callback_data: 'edit:xy:' + t.id }],
+      [{ text: t.photo ? '📷 Заменить фото' : '📷 Добавить фото', callback_data: 'photo:' + t.id }],
       [{ text: t.status === 'active' ? '🙈 Скрыть' : '🟢 Опубликовать', callback_data: 'toggle:' + t.id },
        { text: '✅ Закрыть', callback_data: 'done:' + t.id }],
       [{ text: '🗑 Удалить', callback_data: 'del:' + t.id }],
@@ -377,6 +384,39 @@ class AdminBot {
        { text: '💰 Цена и принять', callback_data: 'apprp:' + r.id }],
       [{ text: '✕ Отклонить', callback_data: 'rej:' + r.id }],
       [{ text: '🚫 Отклонить и заблокировать', callback_data: 'rejbl:' + r.id }],
+      [{ text: '‹ Панель', callback_data: 'panel' }],
+    ] } };
+
+    if (messageId) return this.editText(chatId, messageId, text, kb);
+    return this.send(chatId, text, kb);
+  }
+
+  /** Отчёты жителей о выполненной работе — очередь проверки. */
+  async showReports(chatId, messageId) {
+    const list = this.store.listReports();
+    if (!list.length) {
+      const text = '<b>Отчёты</b>\n\n<i>Нет работ на проверке. Когда житель сдаст задание, оно появится здесь.</i>';
+      const kb = this.kbBack();
+      if (messageId) return this.editText(chatId, messageId, text, kb);
+      return this.send(chatId, text, kb);
+    }
+
+    const t = list[0];
+    const waited = t.reportAt ? Math.round((Date.now() - t.reportAt) / 3600000) : 0;
+    const text =
+      '<b>Отчёт 1 из ' + list.length + '</b>\n\n' +
+      '<b>' + esc(t.title) + '</b>\n' +
+      'Исполнитель: <b>' + esc(t.takenBy || '—') + '</b>\n' +
+      'К выплате: <b>' + fmtR(t.reward) + '</b>\n' +
+      (waited ? 'Ждёт: ' + waited + ' ч\n' : '') +
+      '\n' + (t.report ? '<i>' + esc(t.report) + '</i>' : '<i>без комментария</i>') +
+      (t.payTo ? '\n\nКошелёк: <code>' + esc(t.payTo) + '</code>' : '') +
+      (t.reportPhoto ? '\n\n📷 фото приложено — смотрите в приложении' : '');
+
+    const kb = { reply_markup: { inline_keyboard: [
+      [{ text: '✅ Принять работу', callback_data: 'acc:' + t.id }],
+      [{ text: '↩️ На доработку', callback_data: 'rew:' + t.id }],
+      [{ text: '✏️ Открыть задание', callback_data: 'task:' + t.id }],
       [{ text: '‹ Панель', callback_data: 'panel' }],
     ] } };
 
@@ -488,6 +528,36 @@ class AdminBot {
           await this.answer(cq.id);
           return this.showQueue(chatId, msgId);
 
+        case 'reports':
+          await this.answer(cq.id);
+          return this.showReports(chatId, msgId);
+
+        case 'acc': {
+          const t = this.store.acceptTask(args[0], cq.from.id);
+          if (!t) return this.answer(cq.id, 'Не найдено', true);
+          await this.answer(cq.id, 'Работа принята');
+          if (t.takenById) {
+            this.send(t.takenById,
+              '✅ Работа принята: «' + esc(t.title) + '»' +
+              (t.reward ? '\nК выплате: ' + fmtR(t.reward) : '')).catch(() => {});
+          }
+          return this.showReports(chatId, msgId);
+        }
+
+        case 'rew': {
+          this.flows.set(chatId, { action: 'rework', id: args[0], step: 'value' });
+          await this.answer(cq.id);
+          return this.send(chatId, 'Что доделать? Пришлите комментарий (или «-» без пояснений).\n\n/cancel — отмена');
+        }
+
+        case 'post': {
+          this.flows.set(chatId, { action: 'post', step: 'text', draft: {} });
+          await this.answer(cq.id);
+          return this.send(chatId,
+            '<b>Публикация в ленту</b>\n\nПришлите текст поста.\n' +
+            'Можно сразу отправить <b>фото с подписью</b> — оно попадёт в пост.\n\n/cancel — отмена');
+        }
+
         case 'prices':
           await this.answer(cq.id);
           return this.showPrices(chatId, msgId);
@@ -529,6 +599,12 @@ class AdminBot {
           this.flows.set(chatId, { action: 'edit', field, id, step: 'value' });
           await this.answer(cq.id);
           return this.send(chatId, prompts[field] + '\n\n/cancel — отмена');
+        }
+
+        case 'photo': {
+          this.flows.set(chatId, { action: 'photo', id: args[0], step: 'value' });
+          await this.answer(cq.id);
+          return this.send(chatId, 'Пришлите изображение для задания.\n\n/cancel — отмена');
         }
 
         case 'toggle': {
@@ -637,9 +713,32 @@ class AdminBot {
     });
   }
 
-  async onFlowInput(msg, flow) {
+  /**
+   * Достаёт файл изображения из сообщения и возвращает публичный URL.
+   * Telegram отдаёт несколько размеров — берём самый большой.
+   */
+  async extractPhoto(msg) {
+    let fileId = null;
+    if (Array.isArray(msg.photo) && msg.photo.length) {
+      fileId = msg.photo[msg.photo.length - 1].file_id;
+    } else if (msg.document && /^image\//.test(msg.document.mime_type || '')) {
+      fileId = msg.document.file_id;
+    }
+    if (!fileId) return null;
+
+    try {
+      const r = await this.call('getFile', { file_id: fileId });
+      if (!r || !r.ok || !r.result || !r.result.file_path) return null;
+      // ссылка содержит токен, поэтому наружу отдаём через прокси сервера
+      return { fileId, path: r.result.file_path, url: '/api/photo/' + encodeURIComponent(fileId) };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async onFlowInput(msg, flow, textArg) {
     const chatId = msg.chat.id;
-    const text = (msg.text || '').trim();
+    const text = textArg !== undefined ? textArg : (msg.text || msg.caption || '').trim();
     const by = msg.from.id;
 
     /* --- создание задания --- */
@@ -739,6 +838,50 @@ class AdminBot {
       await this.notifyAuthor(res.req, '✅ Ваша заявка «' + res.req.title + '» принята — задание на карте.');
       await this.send(chatId, '✅ Принято с ценой ' + fmtR(v));
       return this.showQueue(chatId);
+    }
+
+    /* --- возврат работы на доработку --- */
+    if (flow.action === 'rework') {
+      const reason = text === '-' ? '' : text;
+      const t = this.store.reworkTask(flow.id, by, reason);
+      this.flows.delete(chatId);
+      if (!t) return this.send(chatId, 'Задание пропало.', this.kbBack());
+      if (t.takenById) {
+        this.send(t.takenById,
+          '↩️ Работа «' + esc(t.title) + '» возвращена на доработку.' +
+          (reason ? '\n\n' + esc(reason) : '')).catch(() => {});
+      }
+      await this.send(chatId, '↩️ Возвращено исполнителю.');
+      return this.showReports(chatId);
+    }
+
+    /* --- публикация в ленту (с картинкой) --- */
+    if (flow.action === 'post') {
+      const photo = await this.extractPhoto(msg);
+      if (!text && !photo) {
+        return this.send(chatId, 'Пришлите текст или фото с подписью.');
+      }
+      const post = this.store.addPost({
+        text, photo: photo ? photo.url : null, photoId: photo ? photo.fileId : null,
+        author: 'район', authorId: by,
+      }, by);
+      this.flows.delete(chatId);
+      return this.send(chatId,
+        '📣 Опубликовано в ленте' + (post.photo ? ' с фото' : '') + '.\n\n' +
+        (post.text ? esc(post.text.slice(0, 200)) : ''),
+        { reply_markup: { inline_keyboard: [
+          [{ text: '📣 Ещё пост', callback_data: 'post' }, { text: '‹ Панель', callback_data: 'panel' }],
+        ] } });
+    }
+
+    /* --- фото к заданию --- */
+    if (flow.action === 'photo') {
+      const photo = await this.extractPhoto(msg);
+      if (!photo) return this.send(chatId, 'Пришлите изображение (фото или файл-картинку).');
+      this.store.updateTask(flow.id, { photo: photo.url }, by);
+      this.flows.delete(chatId);
+      await this.send(chatId, '📷 Фото добавлено к заданию.');
+      return this.showTask(chatId, flow.id);
     }
 
     /* --- блокировка по id --- */

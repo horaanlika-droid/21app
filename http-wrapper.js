@@ -178,6 +178,8 @@ let __rateCache = { v: 0, ts: 0 };
 const __payLimit = new Map();
 /** Антиспам заявок: ключ (id жителя или ip) → отметки времени. */
 const __reqLimit = new Map();
+/** Кеш file_id → file_path Telegram, чтобы не звать getFile на каждый показ. */
+const __photoCache = new Map();
 
 /* ---------- Общее хранилище + админ-бот ----------
    Данные лежат в JSON-файле (DATA_FILE), а не в localStorage браузера,
@@ -328,10 +330,48 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       ok: true,
       tasks: store.listTasks('all').filter(t => t.status !== 'hidden'),
+      feed: store.listFeed(),
       prices: store.data.prices,
       blocked: uid ? store.isBlocked(uid) : false,
+      mine: uid ? store.listMine(uid).map(t => ({ id: t.id, status: t.status, title: t.title })) : [],
       updatedAt: Date.now(),
     }, apiCors);
+  }
+
+  /* Прокси картинок Telegram: прямая ссылка на файл содержит токен бота,
+     поэтому наружу отдаём через себя. Кешируем id→path, чтобы не дёргать
+     getFile на каждый показ ленты. */
+  if (urlPath.indexOf('/api/photo/') === 0) {
+    const fileId = decodeURIComponent(urlPath.slice('/api/photo/'.length));
+    if (!BOT_TOKEN || !/^[\w-]{20,200}$/.test(fileId)) return send(res, 404, '404');
+    (async () => {
+      try {
+        let filePath = __photoCache.get(fileId);
+        if (!filePath) {
+          const r = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/getFile', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_id: fileId }),
+          });
+          const j = await r.json();
+          if (!j || !j.ok || !j.result || !j.result.file_path) return send(res, 404, '404');
+          filePath = j.result.file_path;
+          __photoCache.set(fileId, filePath);
+          if (__photoCache.size > 300) __photoCache.delete(__photoCache.keys().next().value);
+        }
+        const f = await fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + filePath);
+        if (!f.ok) return send(res, 404, '404');
+        const buf = Buffer.from(await f.arrayBuffer());
+        const ext = (filePath.match(/\.(\w+)$/) || [, 'jpg'])[1].toLowerCase();
+        res.writeHead(200, {
+          'Content-Type': MIME['.' + ext] || 'image/jpeg',
+          'Content-Length': buf.length,
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': BOT_ALLOW_ORIGIN,
+        });
+        res.end(buf);
+      } catch (e) { send(res, 502, '502'); }
+    })();
+    return;
   }
 
   // житель присылает заявку из приложения
@@ -340,7 +380,7 @@ const server = http.createServer((req, res) => {
     if (req.method !== 'POST') return send(res, 405, '', apiCors);
     (async () => {
       let body = {};
-      try { body = JSON.parse((await readBody(req)) || '{}'); } catch (e) {}
+      try { body = JSON.parse((await readBody(req, 3000000)) || '{}'); } catch (e) {}
 
       // блеклист: молча не принимаем — заблокированному не сообщаем причину
       if (body.authorId && store.isBlocked(body.authorId)) {
@@ -375,27 +415,65 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // взять задание / отметить сделанным
+  // публикация в ленту из веб-админки (бот публикует напрямую через store)
+  if (urlPath === '/api/post') {
+    if (req.method === 'OPTIONS') return send(res, 204, '', apiCors);
+    if (req.method !== 'POST') return send(res, 405, '', apiCors);
+    (async () => {
+      let body = {};
+      try { body = JSON.parse((await readBody(req, 3000000))) || {}; } catch (e) {}
+      const text = String(body.text || '').trim();
+      if (!text && !body.photo) return sendJson(res, 400, { ok: false, description: 'empty' }, apiCors);
+      const post = store.addPost({ text, photo: body.photo || null, author: body.author }, 'web');
+      sendJson(res, 200, { ok: true, id: post.id }, apiCors);
+    })();
+    return;
+  }
+
+  // взять задание / отказаться / отчитаться о выполнении
   if (urlPath === '/api/task-action') {
     if (req.method === 'OPTIONS') return send(res, 204, '', apiCors);
     if (req.method !== 'POST') return send(res, 405, '', apiCors);
     (async () => {
       let body = {};
-      try { body = JSON.parse((await readBody(req)) || '{}'); } catch (e) {}
+      // 3 МБ: в отчёте может быть фото в base64, стандартных 64 КБ не хватит
+      try { body = JSON.parse((await readBody(req, 3000000)) || '{}'); } catch (e) {}
       if (body.userId && store.isBlocked(body.userId)) {
         return sendJson(res, 403, { ok: false, description: 'blocked' }, apiCors);
       }
       const task = store.getTask(String(body.id || ''));
       if (!task) return sendJson(res, 404, { ok: false, description: 'not found' }, apiCors);
 
-      const who = String(body.userName || 'сосед').slice(0, 40);
+      const user = { id: body.userId || null, name: String(body.userName || 'сосед').slice(0, 40) };
+      const esc = t => String(t).replace(/[<>&]/g, '');
+
       if (body.action === 'take') {
-        if (task.takenBy) return sendJson(res, 409, { ok: false, description: 'taken' }, apiCors);
-        store.updateTask(task.id, { takenBy: who, status: 'doing' }, false);
-        if (adminBot) adminBot.notifyAdmin('🔧 «' + task.title + '» взял ' + who);
-      } else if (body.action === 'done') {
-        store.updateTask(task.id, { status: 'verify' }, false);
-        if (adminBot) adminBot.notifyAdmin('🏁 «' + task.title + '» отмечено сделанным (' + who + ')');
+        const r = store.takeTask(task.id, user);
+        if (r.error) return sendJson(res, r.error === 'taken' ? 409 : 400, { ok: false, description: r.error }, apiCors);
+        if (adminBot) adminBot.notifyAdmin('🔧 «' + esc(task.title) + '» взял ' + esc(user.name));
+
+      } else if (body.action === 'release') {
+        const r = store.releaseTask(task.id, user);
+        if (r.error) return sendJson(res, 403, { ok: false, description: r.error }, apiCors);
+
+      } else if (body.action === 'report') {
+        const r = store.reportTask(task.id, user, {
+          text: body.report, photo: body.photo, payTo: body.payTo,
+        });
+        if (r.error) return sendJson(res, 403, { ok: false, description: r.error }, apiCors);
+        // зовём админа сразу — с кнопками принять/на доработку
+        if (adminBot) {
+          adminBot.notifyAdmin(
+            '🔍 <b>Отчёт о выполнении</b>\n\n<b>' + esc(task.title) + '</b>\n' +
+            'Исполнитель: ' + esc(user.name) + '\n' +
+            'К выплате: ' + (task.reward || 0) + ' ₽' +
+            (body.report ? '\n\n' + esc(String(body.report).slice(0, 400)) : ''),
+            { reply_markup: { inline_keyboard: [
+              [{ text: '✅ Принять работу', callback_data: 'acc:' + task.id }],
+              [{ text: '↩️ На доработку', callback_data: 'rew:' + task.id }],
+            ] } });
+        }
+
       } else {
         return sendJson(res, 400, { ok: false, description: 'bad action' }, apiCors);
       }

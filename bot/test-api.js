@@ -16,6 +16,14 @@ let bad = 0;
 const ok = (n, c) => { if (!c) bad++; console.log((c ? '✓ ' : '✗ ') + n); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+// готовим хранилище заранее: задание создаёт только бот, а токена в тесте нет
+{
+  const { Store } = require('./store');
+  const seed = new Store(dataFile, { saveDelay: 0 });
+  seed.createTask({ type: 'fix', title: 'Задание для теста', reward: 500 }, 'seed');
+  seed.flush();
+}
+
 const srv = spawn('node', ['http-wrapper.js'], {
   cwd: path.join(__dirname, '..'),
   env: Object.assign({}, process.env, {
@@ -38,7 +46,7 @@ const post = (p, body) => fetch(base + p, {
   // пустая доска
   let r = await fetch(base + '/api/board').then(r => r.json());
   ok('/api/board отвечает', r.ok === true);
-  ok('задания пустые', Array.isArray(r.tasks) && r.tasks.length === 0);
+  ok('задания отдаются', Array.isArray(r.tasks) && r.tasks.length === 1);
   ok('цены отдаются', r.prices && r.prices.fix === 500);
 
   // заявка от жителя
@@ -89,6 +97,48 @@ const post = (p, body) => fetch(base + p, {
   } else {
     ok('неизвестное действие отклонено (нет задания для теста)', true);
   }
+
+  // ---- жизненный цикл через HTTP ----
+  const { Store: S2 } = require('./store');
+  const stx = new S2(dataFile, { saveDelay: 0 });
+  // задание создаём напрямую в файле, затем перезапускать сервер не будем:
+  // проверяем именно HTTP-контракт на уже существующем задании
+  const board = await fetch(base + '/api/board').then(r => r.json());
+  const target = board.tasks.find(t => t.title === 'Задание для теста');
+
+  if (target) {
+    res = await post('/api/task-action', { id: target.id, action: 'take', userId: 100, userName: 'Витя' });
+    ok('взять задание через HTTP', res.status === 200 && res.json.ok);
+
+    res = await post('/api/task-action', { id: target.id, action: 'take', userId: 200, userName: 'Чужой' });
+    ok('перехват другим отклонён (409)', res.status === 409);
+
+    res = await post('/api/task-action', { id: target.id, action: 'report', userId: 200, userName: 'Чужой', report: 'не я' });
+    ok('чужой отчёт отклонён (403)', res.status === 403);
+
+    const bigPhoto = 'data:image/png;base64,' + 'A'.repeat(200000);
+    res = await post('/api/task-action', {
+      id: target.id, action: 'report', userId: 100, userName: 'Витя',
+      report: 'сделано', photo: bigPhoto,
+    });
+    ok('отчёт с крупным фото принят (лимит тела поднят)', res.status === 200 && res.json.ok);
+    ok('статус стал verify', res.json.task && res.json.task.status === 'verify');
+
+    res = await post('/api/task-action', { id: target.id, action: 'release', userId: 100, userName: 'Витя' });
+    ok('отказ от задания', res.status === 200);
+  } else {
+    ok('жизненный цикл (нет задания для теста)', true);
+  }
+
+  // ---- лента ----
+  res = await post('/api/post', { text: 'Новость района', photo: 'data:image/png;base64,AAA', author: 'район' });
+  ok('пост опубликован через HTTP', res.status === 200 && res.json.ok);
+  res = await post('/api/post', { text: '' });
+  ok('пустой пост отклонён', res.status === 400);
+  const b2 = await fetch(base + '/api/board').then(r => r.json());
+  ok('лента приходит в /api/board', Array.isArray(b2.feed) && b2.feed.length >= 1);
+  ok('фото поста в ленте', b2.feed.some(p => !!p.photo));
+  ok('mine приходит для uid', Array.isArray((await fetch(base + '/api/board?uid=100').then(r => r.json())).mine));
 
   // recent-chats
   r = await fetch(base + '/api/admin/recent-chats').then(r => r.json());

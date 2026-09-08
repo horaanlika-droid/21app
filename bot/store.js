@@ -39,6 +39,8 @@ const DEFAULT_DATA = () => ({
   blacklist: [],
   /** Цены по категориям. */
   prices: { ...DEFAULT_PRICES },
+  /** Лента района: объявления админа, можно с картинкой. */
+  feed: [],
   /** Журнал действий админа — кто что сделал. */
   log: [],
   /** offset для getUpdates: чтобы после перезапуска не читать старое заново. */
@@ -153,7 +155,14 @@ class Store {
       status: 'active',
       author: input.author || 'район',
       authorId: input.authorId || null,
-      takenBy: null,
+      /* исполнитель и отчёт */
+      takenBy: null,      // имя взявшего — показывается в его статусе
+      takenById: null,    // telegram-id, чтобы уведомить о решении
+      takenAt: null,
+      report: '',         // текст отчёта о выполнении
+      reportPhoto: null,
+      reportAt: null,
+      payTo: '',          // куда платить (TON-адрес исполнителя)
       photo: input.photo || null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -168,7 +177,10 @@ class Store {
   updateTask(id, patch, by) {
     const task = this.getTask(id);
     if (!task) return null;
-    const allowed = ['title', 'desc', 'reward', 'xp', 'karma', 'x', 'y', 'status', 'type', 'takenBy'];
+    const allowed = [
+      'title', 'desc', 'reward', 'xp', 'karma', 'x', 'y', 'status', 'type',
+      'takenBy', 'takenById', 'takenAt', 'report', 'reportPhoto', 'reportAt', 'payTo',
+    ];
     for (const key of allowed) {
       if (patch[key] !== undefined) task[key] = patch[key];
     }
@@ -185,6 +197,103 @@ class Store {
     this.save();
     this.addLog('удалено задание «' + task.title + '»', by);
     return task;
+  }
+
+  /* ---------------- жизненный цикл задания ----------------
+     active → doing (взял) → verify (отчитался) → done (принято админом).
+     Админ может вернуть на доработку: verify → doing. */
+
+  /** Житель берёт задание. Возвращает {error} если занято/недоступно. */
+  takeTask(id, user) {
+    const task = this.getTask(id);
+    if (!task) return { error: 'not-found' };
+    if (task.status === 'hidden') return { error: 'hidden' };
+    if (task.status === 'done') return { error: 'done' };
+    // уже взято другим — второй исполнитель не должен перехватывать
+    if (task.takenById && String(task.takenById) !== String(user.id)) return { error: 'taken' };
+    if (task.status === 'verify') return { error: 'on-review' };
+
+    task.takenBy = String(user.name || 'сосед').slice(0, 40);
+    task.takenById = user.id != null ? String(user.id) : null;
+    task.takenAt = Date.now();
+    task.status = 'doing';
+    task.updatedAt = Date.now();
+    this.save();
+    return { task };
+  }
+
+  /** Отказ от задания — возвращаем в общий доступ. */
+  releaseTask(id, user) {
+    const task = this.getTask(id);
+    if (!task) return { error: 'not-found' };
+    if (task.takenById && String(task.takenById) !== String(user.id)) return { error: 'not-yours' };
+    task.takenBy = null;
+    task.takenById = null;
+    task.takenAt = null;
+    task.status = 'active';
+    task.report = '';
+    task.reportPhoto = null;
+    task.reportAt = null;
+    task.updatedAt = Date.now();
+    this.save();
+    return { task };
+  }
+
+  /** Отчёт о выполнении: текст + фото. Уходит админу на проверку. */
+  reportTask(id, user, report) {
+    const task = this.getTask(id);
+    if (!task) return { error: 'not-found' };
+    if (task.takenById && String(task.takenById) !== String(user.id)) return { error: 'not-yours' };
+    if (task.status === 'done') return { error: 'done' };
+
+    task.report = String(report.text || '').slice(0, 600);
+    task.reportPhoto = report.photo || null;
+    task.reportAt = Date.now();
+    task.payTo = String(report.payTo || '').slice(0, 80);
+    task.status = 'verify';
+    // если брал не через приложение — фиксируем исполнителя по отчёту
+    if (!task.takenBy) {
+      task.takenBy = String(user.name || 'сосед').slice(0, 40);
+      task.takenById = user.id != null ? String(user.id) : null;
+    }
+    task.updatedAt = Date.now();
+    this.save();
+    return { task };
+  }
+
+  /** Админ принимает работу. */
+  acceptTask(id, by) {
+    const task = this.getTask(id);
+    if (!task) return null;
+    task.status = 'done';
+    task.updatedAt = Date.now();
+    this.save();
+    this.addLog('принята работа «' + task.title + '»' + (task.takenBy ? ' от ' + task.takenBy : ''), by);
+    return task;
+  }
+
+  /** Админ возвращает на доработку — исполнитель остаётся тот же. */
+  reworkTask(id, by, reason) {
+    const task = this.getTask(id);
+    if (!task) return null;
+    task.status = 'doing';
+    task.reworkReason = String(reason || '').slice(0, 300);
+    task.updatedAt = Date.now();
+    this.save();
+    this.addLog('возврат на доработку «' + task.title + '»', by);
+    return task;
+  }
+
+  /** Задания, ждущие проверки админом. */
+  listReports() {
+    return this.data.tasks.filter(t => t.status === 'verify');
+  }
+
+  /** Задания конкретного жителя — для его статуса в приложении. */
+  listMine(userId) {
+    if (userId == null || userId === '') return [];
+    const key = String(userId);
+    return this.data.tasks.filter(t => String(t.takenById) === key);
   }
 
   /* ---------------- заявки ---------------- */
@@ -241,6 +350,39 @@ class Store {
     this.save();
     this.addLog('отклонена заявка «' + req.title + '»' + (reason ? ' (' + reason + ')' : ''), by);
     return req;
+  }
+
+  /* ---------------- лента ---------------- */
+
+  listFeed() {
+    return this.data.feed;
+  }
+
+  /** Пост в ленту района. Картинка необязательна. */
+  addPost(input, by) {
+    const post = {
+      id: uid(),
+      text: String(input.text || '').slice(0, 1000),
+      photo: input.photo || null,
+      photoId: input.photoId || null,
+      author: String(input.author || 'район').slice(0, 40),
+      authorId: input.authorId != null ? String(input.authorId) : null,
+      ts: Date.now(),
+    };
+    this.data.feed.unshift(post);
+    if (this.data.feed.length > 100) this.data.feed.length = 100;
+    this.save();
+    this.addLog('пост в ленту' + (post.photo ? ' с фото' : '') + ': ' + post.text.slice(0, 40), by);
+    return post;
+  }
+
+  deletePost(id, by) {
+    const post = this.data.feed.find(p => p.id === id);
+    if (!post) return null;
+    this.data.feed = this.data.feed.filter(p => p.id !== id);
+    this.save();
+    this.addLog('удалён пост из ленты', by);
+    return post;
   }
 
   /* ---------------- блеклист ---------------- */
@@ -319,6 +461,7 @@ class Store {
       tasksActive: tasks.filter(t => t.status === 'active').length,
       tasksDoing: tasks.filter(t => t.status === 'doing').length,
       tasksDone: tasks.filter(t => t.status === 'done').length,
+      tasksVerify: tasks.filter(t => t.status === 'verify').length,
       requests: this.data.requests.length,
       blacklist: this.data.blacklist.length,
       rewardActive: tasks.filter(t => t.status === 'active').reduce((s, t) => s + (t.reward || 0), 0),

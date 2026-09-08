@@ -90,6 +90,64 @@ const s3 = new Store(file, { saveDelay: 0 });
 ok('битый файл не роняет сервер', Array.isArray(s3.data.tasks));
 ok('битый файл отложен в сторону', fs.readdirSync(tmp).some(f => f.includes('broken')));
 
+/* ---------------- жизненный цикл задания ---------------- */
+console.log('— отчёты о выполнении —');
+const lc = new Store(path.join(tmp, 'lc.json'), { saveDelay: 0 });
+const job = lc.createTask({ type: 'fix', title: 'Дверь подъезда', reward: 800 }, 1);
+
+let r = lc.takeTask(job.id, { id: 100, name: 'Витя' });
+ok('житель взял задание', !r.error && r.task.status === 'doing');
+ok('исполнитель записан', lc.getTask(job.id).takenBy === 'Витя');
+ok('id исполнителя записан', String(lc.getTask(job.id).takenById) === '100');
+
+r = lc.takeTask(job.id, { id: 200, name: 'Другой' });
+ok('второй не может перехватить', r.error === 'taken');
+r = lc.takeTask(job.id, { id: 100, name: 'Витя' });
+ok('тот же житель может открыть снова', !r.error);
+
+ok('задание видно в «моих»', lc.listMine(100).length === 1);
+ok('у чужого пусто', lc.listMine(200).length === 0);
+
+r = lc.reportTask(job.id, { id: 200, name: 'Чужой' }, { text: 'я сделал' });
+ok('чужой не может отчитаться', r.error === 'not-yours');
+
+r = lc.reportTask(job.id, { id: 100, name: 'Витя' },
+  { text: 'заменил замок', photo: 'data:image/png;base64,AAA', payTo: 'UQtest' });
+ok('отчёт принят', !r.error && r.task.status === 'verify');
+ok('текст отчёта сохранён', lc.getTask(job.id).report === 'заменил замок');
+ok('фото отчёта сохранено', !!lc.getTask(job.id).reportPhoto);
+ok('кошелёк для выплаты сохранён', lc.getTask(job.id).payTo === 'UQtest');
+ok('задание в очереди проверки', lc.listReports().length === 1);
+
+lc.reworkTask(job.id, 1, 'докрасить');
+ok('возврат на доработку', lc.getTask(job.id).status === 'doing');
+ok('исполнитель сохранён при возврате', lc.getTask(job.id).takenBy === 'Витя');
+ok('причина возврата записана', lc.getTask(job.id).reworkReason === 'докрасить');
+
+lc.reportTask(job.id, { id: 100, name: 'Витя' }, { text: 'докрасил' });
+lc.acceptTask(job.id, 1);
+ok('работа принята', lc.getTask(job.id).status === 'done');
+ok('очередь проверки пуста', lc.listReports().length === 0);
+
+const job2 = lc.createTask({ type: 'help', title: 'Отказ' }, 1);
+lc.takeTask(job2.id, { id: 100, name: 'Витя' });
+lc.releaseTask(job2.id, { id: 100, name: 'Витя' });
+ok('отказ возвращает в общий доступ', lc.getTask(job2.id).status === 'active');
+ok('исполнитель очищен', lc.getTask(job2.id).takenBy === null);
+
+ok('счётчик verify в сводке', typeof lc.stats().tasksVerify === 'number');
+
+/* ---------------- лента с картинками ---------------- */
+console.log('— лента —');
+const post1 = lc.addPost({ text: 'Мастерская открыта', author: 'район' }, 1);
+ok('пост создан', lc.listFeed().length === 1);
+ok('пост без фото допустим', post1.photo === null);
+const post2 = lc.addPost({ text: 'С фото', photo: '/api/photo/abc', photoId: 'abc' }, 1);
+ok('пост с фото', post2.photo === '/api/photo/abc');
+ok('новые посты сверху', lc.listFeed()[0].id === post2.id);
+lc.deletePost(post1.id, 1);
+ok('пост удаляется', lc.listFeed().length === 1);
+
 /* ---------------- логика бота ---------------- */
 console.log('— бот —');
 const store = new Store(path.join(tmp, 'b.json'), { saveDelay: 0 });

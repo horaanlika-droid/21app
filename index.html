@@ -301,7 +301,6 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   font-size:10.5px;font-weight:600;padding:3px 0;
 }
 .tab svg{width:24px;height:24px}
-.tab .tabwarn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1}
 .tab.on{color:var(--blue)}
 
 /* ---------- bottom sheet ---------- */
@@ -648,6 +647,10 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <span><span class="ct">Сообщить о проблеме</span><div class="cs">заявка уйдёт на модерацию</div></span>
         <span class="arr">›</span>
       </button>
+      <div id="myTaskBlock" style="display:none">
+        <div class="sec-label" id="myTaskLabel">ТЫ ВЗЯЛ · 0</div>
+        <div id="myTaskList"></div>
+      </div>
       <div id="myReqBlock" style="display:none">
         <div class="sec-label" id="myReqLabel">ТВОИ ЗАЯВКИ · 0</div>
         <div id="myReqList"></div>
@@ -790,6 +793,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
             <input id="apBudget" type="text" inputmode="numeric" value="0">
           </div>
         </div>
+        <div class="fld"><label>ФОТО (НЕОБЯЗАТЕЛЬНО)</label><div class="iphoto" id="apPointPhoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg>Нажмите, чтобы выбрать фото</div><input type="file" id="apPointFile" accept="image/*" style="display:none"></div>
         <button class="bigbtn" id="apAddPoint">Добавить точку на карту</button>
       </div>
       <div class="apanel" id="ap-payout"><div class="sec-label" style="margin-top:0" id="payLabel">ОЖИДАЮТ ПОДТВЕРЖДЕНИЯ · 0</div><div class="card" id="payList"></div><div class="aminor" style="margin-top:8px">Выплата = GRAM на TG-кошелёк исполнителя. Открой перевод по кнопке — после отправки подтверди «Выплачено».</div></div>
@@ -809,6 +813,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
             <input id="apOptC" type="text" maxlength="14" placeholder="—">
           </div>
         </div>
+        <div class="fld"><label>ФОТО (НЕОБЯЗАТЕЛЬНО)</label><div class="iphoto" id="apCasePhoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg>Нажмите, чтобы выбрать фото</div><input type="file" id="apCaseFile" accept="image/*" style="display:none"></div>
         <div class="fld"><label>ДНЕЙ ДО ГОЛОСА</label><input id="apCaseDays" type="text" inputmode="numeric" value="3"></div>
         <button class="bigbtn" id="apCaseAdd">Добавить дело в суд</button>
       </div>
@@ -818,6 +823,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
         <div class="fld"><label>ЦЕЛЬ ₽ / СОБРАНО ₽</label>
           <div class="row2"><input id="apProjGoal" type="text" inputmode="numeric" value="1000"><input id="apProjRaised" type="text" inputmode="numeric" value="0"></div>
         </div>
+        <div class="fld"><label>ФОТО (НЕОБЯЗАТЕЛЬНО)</label><div class="iphoto" id="apProjPhoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg>Нажмите, чтобы выбрать фото</div><input type="file" id="apProjFile" accept="image/*" style="display:none"></div>
         <button class="bigbtn" id="apProjAdd">Добавить проект в фонд</button>
       </div>
       <div class="apanel" id="ap-feed">
@@ -830,7 +836,7 @@ input,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
     <button class="tab on" data-tab="scr-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Карта</button>
     <button class="tab" data-tab="scr-tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 2 2 3.5-3.5M8 15.5h8"/></svg>Задачи</button>
     <button class="tab" data-tab="scr-fund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/></svg>Фонд</button>
-    <button class="tab" data-tab="scr-court"><span class="tabwarn">⚠️</span>Важное</button>
+    <button class="tab" data-tab="scr-court"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Важное</button>
     <button class="tab" data-tab="scr-me"><img class="tablogo" src="assets/logo.png" alt=""/>21</button>
   </nav>
 </div>
@@ -1078,47 +1084,26 @@ function orderPrice(type, desc) {
 }
 
 /* ---------------- состояние ---------------- */
-const LS_KEY = 'os21_v5';
+const LS_KEY = 'os21_v6';
 const SEED = () => ({
-  v: 5,
+  v: 6,
   bot: { chatId: ADMIN_CHAT, queue: [] },
   user: null,
-  quests: [
-    { id: 'q1', type: 'fix',   title: 'Скамейка у 19-го дома', desc: 'Оторваны две доски. Нужны саморезы и шуруповёрт. Материалы — из фонда.', x: 48.7890, y: 44.7755, xp: 40, karma: 6, budget: 900, reward: 100, author: 'район', status: 'active', takenBy: null },
-    { id: 'q2', type: 'help',  title: 'Донести продукты', desc: 'Соседке 82 года, 4 этаж без лифта. Каждый четверг, 30 минут.', x: 48.7882, y: 44.7788, xp: 30, karma: 10, budget: 0, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q3', type: 'swap',  title: 'Полка книг → двор', desc: 'Свободная полка у подъезда: приноси книгу, забирай книгу.', x: 48.7898, y: 44.7803, xp: 20, karma: 4, budget: 300, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q4', type: 'class', title: 'Пайка наушников', desc: 'Учим чинить провод у штекера. Нужен паяльник с пинцетом.', x: 48.7875, y: 44.7810, xp: 60, karma: 12, budget: 0, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q5', type: 'fix',   title: 'Фонарь на тропе', desc: 'Темно от школы до остановки. Меняем лампу и датчик.', x: 48.7902, y: 44.7771, xp: 45, karma: 8, budget: 1500, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q6', type: 'help',  title: 'Выгул собаки', desc: 'Хозяин на реабилитации 2 недели. Утро или вечер.', x: 48.7887, y: 44.7795, xp: 25, karma: 9, budget: 0, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q7', type: 'swap',  title: 'Обмен рассадой', desc: 'Меняем черенки и семена во дворе, суббота 12:00.', x: 48.7871, y: 44.7779, xp: 20, karma: 5, budget: 800, reward: 0, author: 'район', status: 'active', takenBy: null },
-    { id: 'q8', type: 'class', title: 'Съёмка на плёнку', desc: 'Показываем, как заряжать и проявлять. 8 мест.', x: 48.7895, y: 44.7786, xp: 55, karma: 11, budget: 800, reward: 0, author: 'район', status: 'active', takenBy: null },
-  ],
+  quests: [],
   requests: [],
-  projects: [
-    { id: 'p1', title: 'Лампы на тропе', urg: 5, goal: 1500, raised: 0, icon: 'en_energy' },
-    { id: 'p2', title: 'Инструмент во двор', urg: 3, goal: 4200, raised: 0, icon: 'qt_fix' },
-    { id: 'p3', title: 'Фильтр для колонки', urg: 4, goal: 2000, raised: 0, icon: 'en_water' },
-    { id: 'p4', title: 'Холодильник добра', urg: 5, goal: 7000, raised: 0, icon: 'qt_help' },
-  ],
+  projects: [],
   fund: { bank: 0, goal: 40000, myContrib: 0, lastDist: null },
   payouts: [],
   community: 0,
   log: [],
-  cases: [
-    { id: 'c1', title: 'Граффити на трансформаторной', desc: 'Согласовать эскиз с пиксель-цветком.', opts: [{ id: 'a', label: 'За', votes: 0 }, { id: 'b', label: 'Против', votes: 0 }], my: null, days: 2 },
-    { id: 'c2', title: 'Куда 5 000 ₽ из фонда', desc: 'Лампы на тропе или инструмент в мастерскую двора.', opts: [{ id: 'a', label: 'Лампы', votes: 0 }, { id: 'b', label: 'Инструмент', votes: 0 }], my: null, days: 3 },
-    { id: 'c3', title: 'Парковка на газоне у 12-го', desc: 'Ставить конусы и клумбу или оставить как есть?', opts: [{ id: 'a', label: 'Клумба', votes: 0 }, { id: 'b', label: 'Конусы', votes: 0 }, { id: 'c', label: 'Оставить', votes: 0 }], my: null, days: 5 },
-  ],
-  feed: [
-    { id: uid(), author: 'район', text: 'Мастерская двора открыта: инструмент — по записи у старшего по корпусу.', img: 'assets/qt_fix.png', ts: Date.now() - 86400000 * 2 },
-    { id: uid(), author: 'Аня', text: 'Нашли котёнка у 12-го подъезда. Ищем дом, кормим у колонки.', img: 'assets/dd_cat.png', ts: Date.now() - 86400000 },
-  ],
+  cases: [],
+  feed: [],
   kb: { read: { water: [0, 0, 0], energy: [0, 0, 0], food: [0, 0, 0], repair: [0, 0, 0], clean: [0, 0, 0] } },
   badges: {},
 });
 let st;
 try { st = JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch (e) { st = null; }
-if (!st || st.v !== 5) st = SEED();
+if (!st || st.v !== 6) st = SEED();
 if (!st.bot) st.bot = { queue: [] };
 if (st.bot.chatId == null) st.bot.chatId = ADMIN_CHAT;   // старые профили без чата → админ-чат
 const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(st)); } catch (e) {} };
@@ -1587,7 +1572,6 @@ function renderTasks() {
       m.appendChild(el('span', 'qt', esc(r.title)));
       const ch = el('span', 'qc');
       ch.appendChild(el('span', 'chip', t.n));
-  if (q.status === 'verify') ch.appendChild(el('span', 'chip orange', 'на проверке'));
       ch.appendChild(el('span', 'chip blue', '+' + r.xp + ' XP'));
       ch.appendChild(el('span', 'chip', '♥ +' + r.karma));
       ch.appendChild(el('span', 'chip orange', 'на модерации'));
@@ -1597,6 +1581,20 @@ function renderTasks() {
       rl.appendChild(c);
     });
   } else reqBlock.style.display = 'none';
+  // мои задания: взятые и отправленные на проверку — видно свой статус
+  const myId = st.user.tid ? String(st.user.tid) : null;
+  const myTasks = st.quests.filter(q =>
+    (q.status === 'doing' || q.status === 'verify') &&
+    (q.takenBy === st.user.name || (myId && String(q.takenById) === myId)));
+  const myBlock = $('#myTaskBlock');
+  if (myTasks.length) {
+    myBlock.style.display = '';
+    $('#myTaskLabel').textContent = 'ТЫ ВЗЯЛ · ' + myTasks.length;
+    const ml = $('#myTaskList');
+    ml.innerHTML = '';
+    myTasks.forEach(q => ml.appendChild(questCard(q)));
+  } else myBlock.style.display = 'none';
+
   // открытые
   const open = st.quests.filter(q => q.status === 'active' && (qFilter === 'all' || q.type === qFilter));
   $('#openLabel').textContent = 'ОТКРЫТЫЕ · ' + open.length;
@@ -1696,10 +1694,23 @@ function openQuest(id) {
         q.escrow = q.reward;
         st.log.unshift({ s: 'Эскроу ордера: ' + fmtR(q.reward) + ' → ' + q.title, ts: Date.now() });
       }
-      q.status = 'doing'; q.takenBy = st.user.name;
+      q.status = 'doing'; q.takenBy = st.user.name; q.takenById = st.user.tid || null;
       save(); refreshAll();
       toast('Задача взята', 'assets/ic_check.png');
       closeSheet();
+      // сообщаем серверу — иначе другие жители не увидят, что задание занято
+      fetch('/api/task-action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: q.id, action: 'take', userId: st.user.tid || null, userName: st.user.name }),
+      }).then(r => r.json()).then(j => {
+        if (j && !j.ok && j.description === 'taken') {
+          // кто-то успел раньше — откатываем
+          q.status = 'active'; q.takenBy = null; q.takenById = null;
+          if (q.escrow) { st.fund.bank += q.escrow; q.escrow = 0; }
+          save(); refreshAll();
+          toast('Задание уже взял другой сосед', '');
+        }
+      }).catch(() => {});
     });
     body.appendChild(b);
   }
@@ -1711,29 +1722,117 @@ function openQuest(id) {
     refuse.appendChild(el('span', 'arr', '›'));
     refuse.addEventListener('click', () => {
       if (q.escrow) { st.fund.bank += q.escrow; q.escrow = 0; }
-      q.status = 'active'; q.takenBy = null;
+      q.status = 'active'; q.takenBy = null; q.takenById = null;
       save(); refreshAll();
       closeSheet();
+      fetch('/api/task-action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: q.id, action: 'release', userId: st.user.tid || null, userName: st.user.name }),
+      }).catch(() => {});
     });
     body.appendChild(refuse);
-    const b = el('button', 'bigbtn', q.reward ? (q.pay2fund ? 'Сдать на проверку · ' + fmtR(q.reward) + ' фонду 🧡' : 'Сдать на проверку · выплата ' + fmtR(q.reward)) : 'Сдать работу');
-    b.addEventListener('click', () => {
-      q.status = 'verify';
-      q.pay_to = st.user.ton || '';
-      q.pay_name = st.user.nick || st.user.name;
-      q.pay_tid = st.user.tid || null;
-      q.pay_ts = Date.now();
-      st.log.unshift({ s: 'Сдано на проверку: ' + q.title + (q.reward ? ' · ждёт выплату ' + fmtR(q.reward) : ''), ts: Date.now() });
-      save();
-      toast(q.reward ? 'На проверке · GRAM придёт после подтверждения' : 'На проверке', 'assets/ic_check.png');
-      botNotify('🔍 НА ПРОВЕРКЕ: «' + q.title + '» от ' + (st.user.nick || st.user.name) +
-        (q.reward ? '\nК выплате: ' + q.reward + ' ₽' : '') + '\nпроверь и оплати — #pay=' + q.id);
-      closeSheet();
-      refreshAll();
-    });
+    const b = el('button', 'bigbtn', q.reward ? (q.pay2fund ? 'Отчитаться · ' + fmtR(q.reward) + ' фонду 🧡' : 'Отчитаться · выплата ' + fmtR(q.reward)) : 'Отчитаться о выполнении');
+    b.addEventListener('click', () => { closeSheet(); openReportSheet(q); });
     body.appendChild(b);
   }
   openSheet('assets/' + t.icon + '.png', q.title, body);
+}
+
+/* ---------------- отчёт о выполнении ----------------
+   Житель описывает, что сделал, и прикладывает фото. Уходит админу
+   в бот с кнопками «принять» / «на доработку». */
+function openReportSheet(q) {
+  const body = el('div');
+  body.appendChild(el('div', 'note',
+    'Расскажите, что сделали. Фото «после» помогает принять работу быстрее.' +
+    (q.reward ? ' После проверки придёт выплата ' + fmtR(q.reward) + '.' : '')));
+
+  const f1 = el('div', 'fld');
+  f1.innerHTML = '<label>ЧТО СДЕЛАНО</label>';
+  const ta = el('textarea');
+  ta.maxLength = 600;
+  ta.placeholder = 'Например: заменил две доски, покрасил, мусор вывез';
+  f1.appendChild(ta);
+  body.appendChild(f1);
+
+  // фото отчёта
+  let photoData = null;
+  const ph = el('div', 'iphoto');
+  const setPh = () => {
+    ph.innerHTML = '';
+    if (photoData) {
+      ph.appendChild(imgTag(photoData));
+    } else {
+      ph.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg><span>Приложить фото «после»</span>';
+    }
+  };
+  setPh();
+  const fi = el('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.style.display = 'none';
+  ph.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', async () => {
+    const f = fi.files[0];
+    if (!f) return;
+    try {
+      photoData = await pixelateFile(f, 64);
+      setPh();
+      toast('Фото добавлено');
+    } catch (e) { toast('Не удалось прочитать фото', ''); }
+  });
+  body.appendChild(ph);
+  body.appendChild(fi);
+
+  if (q.reward) {
+    const f2 = el('div', 'fld');
+    f2.innerHTML = '<label>КУДА ПЛАТИТЬ</label>';
+    const wi = el('input');
+    wi.type = 'text';
+    wi.value = st.user.ton || '';
+    wi.placeholder = 'TON-кошелёк (можно оставить пустым)';
+    f2.appendChild(wi);
+    body.appendChild(f2);
+    body.__wallet = wi;
+  }
+
+  const send = el('button', 'bigbtn', 'Отправить отчёт');
+  send.addEventListener('click', async () => {
+    const text = ta.value.trim();
+    if (text.length < 3 && !photoData) {
+      toast('Опишите, что сделали, или приложите фото', '');
+      return;
+    }
+    send.disabled = true;
+    send.textContent = 'Отправляем…';
+
+    // локально — сразу, чтобы статус не «мигал» при плохой сети
+    q.status = 'verify';
+    q.report = text;
+    q.reportPhoto = photoData;
+    q.pay_to = body.__wallet ? body.__wallet.value.trim() : (st.user.ton || '');
+    q.pay_name = st.user.nick || st.user.name;
+    q.pay_tid = st.user.tid || null;
+    q.pay_ts = Date.now();
+    st.log.unshift({ s: 'Отчёт отправлен: ' + q.title + (q.reward ? ' · ждёт выплату ' + fmtR(q.reward) : ''), ts: Date.now() });
+    save();
+    refreshAll();
+
+    // на сервер — админ увидит в боте
+    try {
+      await fetch('/api/task-action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: q.id, action: 'report',
+          userId: st.user.tid || null, userName: st.user.name,
+          report: text, photo: photoData, payTo: q.pay_to,
+        }),
+      });
+    } catch (e) { /* оффлайн — отчёт сохранён локально, уйдёт при следующем действии */ }
+
+    toast(q.reward ? 'Отчёт отправлен · выплата после проверки' : 'Отчёт отправлен', 'assets/ic_check.png');
+    closeSheet();
+  });
+  body.appendChild(send);
+
+  openSheet('assets/' + TYPES[q.type].icon + '.png', 'Отчёт · ' + q.title, body);
 }
 
 /* ---------------- заявка (сообщить о проблеме) ---------------- */
@@ -1949,7 +2048,8 @@ function renderFund() {
     const pctP = Math.min(100, Math.round(p.raised / p.goal * 100));
     const c = el('div', 'proj');
     const pt = el('div', 'pt');
-    const pi = el('div', 'pi'); pi.appendChild(imgTag('assets/' + p.icon + '.png'));
+    // своё фото проекта, если админ приложил; иначе — иконка категории
+    const pi = el('div', 'pi'); pi.appendChild(p.img ? imgTag(p.img) : imgTag('assets/' + p.icon + '.png'));
     pt.appendChild(pi);
     const pn = el('div', 'pn');
     pn.appendChild(el('b', null, esc(p.title)));
@@ -2090,6 +2190,7 @@ function renderCourt() {
     ch.appendChild(ct);
     ch.appendChild(el('span', closed ? 'chip green' : 'chip gray2', closed ? 'кворум' : total + '/' + QUORUM));
     card.appendChild(ch);
+    if (c.img) { const im = el('img', 'pi'); im.src = c.img; card.appendChild(im); }
     const bar = el('div', 'cbar');
     const colors = ['a', 'b', 'c'];
     c.opts.forEach((o, i) => {
@@ -2431,7 +2532,6 @@ $('#tileQR').addEventListener('click', () => openSticker({ kind: 'me' }));
    АДМИН-ПАНЕЛЬ
    ================================================================ */
 let aType = 'fix';
-let postPhoto = null;
 /* GRAM-выплаты: курс, интеграция с TG-кошельком через ton://, подтверждение модератором */
 window.__gramRub = window.__gramRub || 0;
 async function gramRate() {
@@ -2878,31 +2978,53 @@ $('#apAddPoint').addEventListener('click', () => {
     budget: parseInt($('#apBudget').value, 10) || 0, reward: 0,
     author: 'район', status: 'active', takenBy: null,
   };
+  q.photo = photoPoint.data;
   st.quests.push(q);
   $('#apTitle').value = ''; $('#apDesc').value = '';
+  photoPoint.reset();
   save();
   toast('Точка на карте', 'assets/ic_map.png');
   refreshAll();
   botNotify('📌 АДМИН: новая точка\n' + q.title + ' (' + q.x.toFixed(4) + ', ' + q.y.toFixed(4) + ')\nтип: ' + TYPES[q.type].n);
 });
-$('#apPostPhoto').addEventListener('click', () => $('#apPostFile').click());
-$('#apPostFile').addEventListener('change', async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  try {
-    postPhoto = await pixelateFile(f, 48);
-    $('#apPostPhoto').innerHTML = '';
-    $('#apPostPhoto').appendChild(imgTag(postPhoto));
-    $('#apPostPhoto').appendChild(el('span', null, 'пиксель-арт ✓'));
-  } catch (err) { toast('Не удалось', ''); }
-});
+/* Единый обработчик выбора фото для всех форм админки.
+   Возвращает объект-держатель: .data — картинка, .reset() — очистить. */
+function bindPhotoPicker(boxId, fileId) {
+  const box = $('#' + boxId), file = $('#' + fileId);
+  const holder = { data: null };
+  if (!box || !file) return holder;
+  const empty = box.innerHTML;
+  holder.reset = () => { holder.data = null; box.innerHTML = empty; };
+  box.addEventListener('click', () => file.click());
+  file.addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      holder.data = await pixelateFile(f, 64);
+      box.innerHTML = '';
+      box.appendChild(imgTag(holder.data));
+      box.appendChild(el('span', null, 'пиксель-арт ✓'));
+    } catch (err) { toast('Не удалось прочитать фото', ''); }
+    file.value = '';
+  });
+  return holder;
+}
+const photoPost  = bindPhotoPicker('apPostPhoto', 'apPostFile');
+const photoPoint = bindPhotoPicker('apPointPhoto', 'apPointFile');
+const photoCase  = bindPhotoPicker('apCasePhoto', 'apCaseFile');
+const photoProj  = bindPhotoPicker('apProjPhoto', 'apProjFile');
 $('#apPostAdd').addEventListener('click', async () => {
   const text = $('#apPostText').value.trim();
   if (!text) { toast('Текст обязателен', ''); return; }
-  st.feed.push({ id: uid(), author: $('#apPostAuthor').value.trim().slice(0, 18) || 'район', text: text.slice(0, 200), img: postPhoto, ts: Date.now() });
+  const author = $('#apPostAuthor').value.trim().slice(0, 18) || 'район';
+  st.feed.push({ id: uid(), author, text: text.slice(0, 200), img: photoPost.data, ts: Date.now() });
+  // в общее хранилище — пост увидят все жители, а не только этот браузер
+  fetch('/api/post', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text.slice(0, 1000), photo: photoPost.data, author }),
+  }).catch(() => {});
   $('#apPostText').value = '';
-  postPhoto = null;
-  $('#apPostPhoto').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.4"/></svg><span>Нажмите, чтобы выбрать фото</span>';
+  photoPost.reset();
   save();
   toast('Пост в ленте', 'assets/ic_feed.png');
   refreshAll();
@@ -2917,8 +3039,9 @@ $('#apCaseAdd').addEventListener('click', () => {
   ];
   const oc = $('#apOptC').value.trim().slice(0, 14);
   if (oc) opts.push({ id: 'c', label: oc, votes: 0 });
-  st.cases.push({ id: uid(), title: title.slice(0, 48), desc: $('#apCaseDesc').value.trim().slice(0, 160), opts, my: null, days: parseInt($('#apCaseDays').value, 10) || 3 });
+  st.cases.push({ id: uid(), title: title.slice(0, 48), desc: $('#apCaseDesc').value.trim().slice(0, 160), opts, my: null, days: parseInt($('#apCaseDays').value, 10) || 3, img: photoCase.data });
   $('#apCaseTitle').value = ''; $('#apCaseDesc').value = '';
+  photoCase.reset();
   save();
   toast('Вопрос на голосовании', 'assets/ic_court.png');
   refreshAll();
@@ -2933,7 +3056,9 @@ $('#apProjAdd').addEventListener('click', () => {
     goal: parseInt($('#apProjGoal').value, 10) || 1000,
     raised: parseInt($('#apProjRaised').value, 10) || 0,
     icon: 'en_energy',
+    img: photoProj.data,
   });
+  photoProj.reset();
   $('#apProjTitle').value = '';
   save();
   toast('Проект в фонде', 'assets/ic_wallet.png');
@@ -3049,10 +3174,23 @@ async function pullBoard() {
       x: t.x, y: t.y, xp: t.xp, karma: t.karma,
       budget: t.budget || 0, reward: t.reward || 0,
       author: t.author || 'район', status: t.status,
-      takenBy: t.takenBy, photo: t.photo || null, srv: true,
+      takenBy: t.takenBy, takenById: t.takenById || null,
+      report: t.report || '', reportPhoto: t.reportPhoto || null,
+      photo: t.photo || null, srv: true,
     }));
     const local = st.quests.filter(q => !q.srv);
     st.quests = server.concat(local);
+
+    // лента из общего хранилища (посты админа из бота и веб-панели)
+    if (Array.isArray(j.feed)) {
+      const srvFeed = j.feed.map(p => ({
+        id: p.id, author: p.author || 'район', text: p.text || '',
+        img: p.photo || null, ts: p.ts, srv: true,
+      }));
+      const localFeed = st.feed.filter(f => !f.srv);
+      // сортируем по времени: свежие сверху при отрисовке (renderFeed разворачивает)
+      st.feed = srvFeed.concat(localFeed).sort((a, b) => a.ts - b.ts);
+    }
 
     if (j.prices) window.__prices = j.prices;
     window.__blocked = !!j.blocked;   // заблокированным прячем создание заявок
