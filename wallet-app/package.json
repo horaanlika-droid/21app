@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@tonconnect/ui-react": "^3.0.2",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@ton/core": "^0.63.1",
@@ -20,8 +21,6 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "esbuild": "^0.28.2",
-    "playwright-core": "^1.63.0",
-    "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
     "vite": "^8.2.2"
   }
