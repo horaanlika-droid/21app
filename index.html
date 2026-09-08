@@ -1320,21 +1320,20 @@ $('#botChatInp').addEventListener('change', () => {
 });
 $('#botFind').addEventListener('click', async () => {
   toast('Находим…');
+  // ВАЖНО: getUpdates отсюда больше не вызываем — апдейты читает админ-бот на
+  // сервере, а Telegram отдаёт их только одному потребителю (иначе 409 и бот
+  // перестаёт отвечать). Сервер запоминает писавшие чаты и отдаёт их списком.
   try {
-    const j = await tg('getUpdates', { limit: 100, timeout: 0 });
-    if (!j.ok) { toast('Ошибка: ' + (j.description || ''), ''); return; }
-    let best = null;
-    (j.result || []).forEach(u => {
-      const m = u.message || u.edited_message || u.channel_post;
-      if (m && m.chat && (!best || u.update_id > best.id)) best = { id: u.update_id, chat: m.chat };
-    });
-    if (!best) { toast('Чат не найден — попробуйте ещё раз', ''); return; }
-    st.bot.chatId = best.chat.id;
+    const r = await fetch('/api/admin/recent-chats');
+    const j = await r.json();
+    const best = (j.chats || [])[0];
+    if (!best) { toast('Напишите боту любое сообщение и повторите', ''); return; }
+    st.bot.chatId = best.id;
     save();
     $('#botChatInp').value = st.bot.chatId;
     renderBotCard();
-    toast('Чат найден: ' + st.bot.chatId);
-  } catch (e) { toast('Сеть: нет ответа от Telegram', ''); }
+    toast('Чат найден: ' + (best.title || best.id));
+  } catch (e) { toast('Сеть: сервер не ответил', ''); }
 });
 $('#botTest').addEventListener('click', async () => {
   const ok = await botNotify('✅ 21: тестовое сообщение — связь работает');
@@ -1816,12 +1815,24 @@ function openReport() {
       photo: repPhoto, xp: 40, karma: 6, cost: orderPrice(repType, i2.value.trim()),
       author: st.user.name, mine: true, ts: Date.now(), status: 'mod',
     };
+    if (window.__blocked) { toast('Заявки от вас временно не принимаются', ''); return; }
+
     st.requests.push(r);
     addXP(5); addKarma(3);
     save();
     closeSheet();
     refreshAll();
     toast('На модерации · примерный ордер ' + fmtR(r.cost), 'assets/ic_check.png');
+
+    // отправляем в общее хранилище — админ увидит её в боте с кнопками решения
+    fetch('/api/request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: r.type, title: r.title, desc: r.desc, x: r.x, y: r.y, cost: r.cost,
+        author: st.user.name, authorId: st.user.tid || null,
+      }),
+    }).catch(() => {});
+
     botNotify(
       '📍 НОВАЯ ЗАЯВКА НА МОДЕРАЦИЮ\n' +
       'От: ' + (st.user.nick || st.user.name) + ' (' + st.user.name + ')\n' +
@@ -3020,8 +3031,45 @@ $('#onbNext').addEventListener('click', () => {
   $('#onb').style.display = 'none';
   enterApp();
 });
+/* ---------------- общая доска района (хранилище бота) ----------------
+   Задания, созданные админом в боте, лежат на сервере. Тянем их и
+   подмешиваем к локальным, чтобы видели все, а не только автор. */
+let __boardTimer = null;
+async function pullBoard() {
+  try {
+    const uid = st.user && st.user.tid ? '?uid=' + encodeURIComponent(st.user.tid) : '';
+    const r = await fetch('/api/board' + uid, { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !j.ok) return;
+
+    // серверные задания помечаем srv:true — локальные демо-точки не трогаем
+    const server = (j.tasks || []).map(t => ({
+      id: t.id, type: t.type, title: t.title, desc: t.desc,
+      x: t.x, y: t.y, xp: t.xp, karma: t.karma,
+      budget: t.budget || 0, reward: t.reward || 0,
+      author: t.author || 'район', status: t.status,
+      takenBy: t.takenBy, photo: t.photo || null, srv: true,
+    }));
+    const local = st.quests.filter(q => !q.srv);
+    st.quests = server.concat(local);
+
+    if (j.prices) window.__prices = j.prices;
+    window.__blocked = !!j.blocked;   // заблокированным прячем создание заявок
+    save();
+    refreshAll();
+  } catch (e) { /* оффлайн — работаем на том, что есть */ }
+}
+function startBoardPoll() {
+  pullBoard();
+  if (!__boardTimer) __boardTimer = setInterval(() => {
+    if (!document.hidden) pullBoard();
+  }, 30000);
+}
+
 function enterApp() {
   startMembersPoll();
+  startBoardPoll();       // подтягиваем задания из общего хранилища
   ensureTonUI();          // тихо поднимаем прошлую сессию кошелька
   $('#gate').style.display = 'none';
   $('#onb').style.display = 'none';

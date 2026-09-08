@@ -176,11 +176,44 @@ const ASSET_FILE = /^\/assets\/[A-Za-z0-9_\/. -]+\.(png|jpe?g|gif|svg|webp|css|j
 
 let __rateCache = { v: 0, ts: 0 };
 const __payLimit = new Map();
+/** Антиспам заявок: ключ (id жителя или ip) → отметки времени. */
+const __reqLimit = new Map();
+
+/* ---------- Общее хранилище + админ-бот ----------
+   Данные лежат в JSON-файле (DATA_FILE), а не в localStorage браузера,
+   поэтому созданное админом видят все. Бот поднимается только при
+   заданных TELEGRAM_BOT_TOKEN и ADMIN_ID. */
+const { Store } = require('./bot/store');
+const { AdminBot } = require('./bot/admin-bot');
+
+const DATA_FILE = process.env.DATA_FILE || path.join(ROOT, 'data', 'board.json');
+const ADMIN_ID = process.env.ADMIN_ID || process.env.BOT_ADMIN_CHAT || '';
+const store = new Store(DATA_FILE);
+
+let adminBot = null;
+if (BOT_TOKEN && ADMIN_ID) {
+  adminBot = new AdminBot({
+    token: BOT_TOKEN,
+    store,
+    adminId: ADMIN_ID,
+    log: (t) => console.log('21 · ' + t),
+  });
+} else if (BOT_TOKEN && !ADMIN_ID) {
+  console.log('21 · админ-бот выключен: не задан ADMIN_ID');
+}
+
+/** CORS для общих данных: приложение может жить на другом домене. */
+const apiCors = {
+  'Access-Control-Allow-Origin': BOT_ALLOW_ORIGIN,
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
 
 const server = http.createServer((req, res) => {
-  let urlPath;
+  let urlPath, parsedUrl;
   try {
-    urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    parsedUrl = new URL(req.url, 'http://localhost');
+    urlPath = decodeURIComponent(parsedUrl.pathname);
   } catch (e) {
     return send(res, 400, 'Bad');
   }
@@ -285,6 +318,98 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* ---------- Общие данные района (хранилище бота) ----------
+     Приложение читает задания/цены отсюда, а не из localStorage: иначе
+     созданное админом в боте видел бы только он сам. */
+
+  // публичные данные для приложения
+  if (urlPath === '/api/board') {
+    const uid = (parsedUrl.searchParams.get('uid') || '').trim();
+    return sendJson(res, 200, {
+      ok: true,
+      tasks: store.listTasks('all').filter(t => t.status !== 'hidden'),
+      prices: store.data.prices,
+      blocked: uid ? store.isBlocked(uid) : false,
+      updatedAt: Date.now(),
+    }, apiCors);
+  }
+
+  // житель присылает заявку из приложения
+  if (urlPath === '/api/request') {
+    if (req.method === 'OPTIONS') return send(res, 204, '', apiCors);
+    if (req.method !== 'POST') return send(res, 405, '', apiCors);
+    (async () => {
+      let body = {};
+      try { body = JSON.parse((await readBody(req)) || '{}'); } catch (e) {}
+
+      // блеклист: молча не принимаем — заблокированному не сообщаем причину
+      if (body.authorId && store.isBlocked(body.authorId)) {
+        return sendJson(res, 200, { ok: false, description: 'rejected' }, apiCors);
+      }
+      const title = String(body.title || '').trim();
+      if (title.length < 3) return sendJson(res, 400, { ok: false, description: 'bad title' }, apiCors);
+
+      const rateKey = String(body.authorId || (req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''));
+      const now = Date.now();
+      const hits = (__reqLimit.get(rateKey) || []).filter(t => now - t < 3600000);
+      if (hits.length >= 20) return sendJson(res, 429, { ok: false, description: 'limit' }, apiCors);
+      hits.push(now);
+      __reqLimit.set(rateKey, hits);
+
+      const saved = store.addRequest({
+        type: body.type, title, desc: body.desc,
+        x: Number(body.x), y: Number(body.y),
+        cost: Number(body.cost), author: body.author, authorId: body.authorId,
+      });
+
+      // сразу зовём админа — с кнопками решения прямо в уведомлении
+      if (adminBot) {
+        const text = '📨 <b>Новая заявка</b>\n\n<b>' + String(saved.title).replace(/[<>&]/g, '') + '</b>\n' +
+          (saved.desc ? String(saved.desc).replace(/[<>&]/g, '') + '\n' : '') +
+          '\nОт: ' + String(saved.author).replace(/[<>&]/g, '') +
+          '\nПредложено: ' + (saved.cost || 0) + ' ₽';
+        adminBot.notifyAdmin(text, adminBot.requestButtons(saved.id));
+      }
+      sendJson(res, 200, { ok: true, id: saved.id }, apiCors);
+    })();
+    return;
+  }
+
+  // взять задание / отметить сделанным
+  if (urlPath === '/api/task-action') {
+    if (req.method === 'OPTIONS') return send(res, 204, '', apiCors);
+    if (req.method !== 'POST') return send(res, 405, '', apiCors);
+    (async () => {
+      let body = {};
+      try { body = JSON.parse((await readBody(req)) || '{}'); } catch (e) {}
+      if (body.userId && store.isBlocked(body.userId)) {
+        return sendJson(res, 403, { ok: false, description: 'blocked' }, apiCors);
+      }
+      const task = store.getTask(String(body.id || ''));
+      if (!task) return sendJson(res, 404, { ok: false, description: 'not found' }, apiCors);
+
+      const who = String(body.userName || 'сосед').slice(0, 40);
+      if (body.action === 'take') {
+        if (task.takenBy) return sendJson(res, 409, { ok: false, description: 'taken' }, apiCors);
+        store.updateTask(task.id, { takenBy: who, status: 'doing' }, false);
+        if (adminBot) adminBot.notifyAdmin('🔧 «' + task.title + '» взял ' + who);
+      } else if (body.action === 'done') {
+        store.updateTask(task.id, { status: 'verify' }, false);
+        if (adminBot) adminBot.notifyAdmin('🏁 «' + task.title + '» отмечено сделанным (' + who + ')');
+      } else {
+        return sendJson(res, 400, { ok: false, description: 'bad action' }, apiCors);
+      }
+      sendJson(res, 200, { ok: true, task: store.getTask(task.id) }, apiCors);
+    })();
+    return;
+  }
+
+  // чаты, писавшие боту, — для кнопки «найти чат» в приложении.
+  // Раньше приложение звало getUpdates напрямую и «воровало» апдейты у бота.
+  if (urlPath === '/api/admin/recent-chats') {
+    return sendJson(res, 200, { ok: true, chats: store.data.recentChats }, apiCors);
+  }
+
   // TON Connect: манифест генерим под фактический origin хоста (localhost / превью / прод),
   // чтобы кошелёк не отбраковал заявку из-за несовпадения домена.
   if (urlPath === '/tonconnect-manifest.json') {
@@ -366,12 +491,16 @@ if (globalThis.__os21ServerStarted) {
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log('21 → http://0.0.0.0:' + PORT + '  (root: ' + ROOT + ', bot relay: ' + (BOT_TOKEN ? 'ON' : 'OFF — TELEGRAM_BOT_TOKEN не задан') + ')');
+    console.log('21 · хранилище: ' + DATA_FILE);
+    if (adminBot) adminBot.start();
   });
 
   // корректное завершение по сигналу платформы — освобождаем порт сразу,
   // иначе следующий инстанс упрётся в тот же EADDRINUSE
   const shutdown = (sig) => () => {
     console.log('21 → получен ' + sig + ', останавливаюсь…');
+    if (adminBot) adminBot.stop();
+    store.flush();                      // дописываем отложенные правки на диск
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 5000).unref();
   };
